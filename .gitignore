@@ -1,3 +1,7 @@
+data_raw/
+data_processed/
+output/
+.ipynb_checkpoints/
+*.Rhistory
+*.RData
 .DS_Store
-data/
-cache/
