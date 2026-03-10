@@ -10,12 +10,6 @@ Pipeline Task 5 outputs:
   output/figures/fig1_specialty_distribution.png
   output/figures/fig3_raw_readmission_by_specialty.png
 
-Usage on Duke DCC:
-  cd /work/zq63/Bayes/Joint-Bayesian
-  python src/03_eda_tables_figures.py
-
-Author : [Your names]
-Date   : 2026-03-10
 """
 
 import numpy as np

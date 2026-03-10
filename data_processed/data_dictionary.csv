@@ -1,0 +1,44 @@
+index,variable,type,description
+0,time_in_hospital_z,continuous (z-scored),"Standardised time_in_hospital (mean=4.273, sd=2.934)"
+1,num_lab_procedures_z,continuous (z-scored),"Standardised num_lab_procedures (mean=42.876, sd=19.894)"
+2,num_procedures_z,continuous (z-scored),"Standardised num_procedures (mean=1.425, sd=1.757)"
+3,num_medications_z,continuous (z-scored),"Standardised num_medications (mean=15.665, sd=8.287)"
+4,number_outpatient_z,continuous (z-scored),"Standardised number_outpatient (mean=0.280, sd=1.064)"
+5,number_emergency_z,continuous (z-scored),"Standardised number_emergency (mean=0.104, sd=0.512)"
+6,number_inpatient_z,continuous (z-scored),"Standardised number_inpatient (mean=0.176, sd=0.602)"
+7,number_diagnoses_z,continuous (z-scored),"Standardised number_diagnoses (mean=7.224, sd=2.001)"
+8,age_numeric_z,continuous (z-scored),"Standardised age_numeric (mean=65.440, sd=15.974)"
+9,n_comorbid_groups_z,continuous (z-scored),"Standardised n_comorbid_groups (mean=2.148, sd=0.710)"
+10,female,binary,Female indicator (ref: Male)
+11,race_AfricanAmerican,binary,Indicator for race = AfricanAmerican (ref: Caucasian)
+12,race_Asian,binary,Indicator for race = Asian (ref: Caucasian)
+13,race_Hispanic,binary,Indicator for race = Hispanic (ref: Caucasian)
+14,race_Other,binary,Indicator for race = Other (ref: Caucasian)
+15,race_Unknown,binary,Indicator for race = Unknown (ref: Caucasian)
+16,diag1_Diabetes,binary,Indicator for primary diagnosis group = Diabetes (ref: Circulatory)
+17,diag1_Digestive,binary,Indicator for primary diagnosis group = Digestive (ref: Circulatory)
+18,diag1_Endocrine_Other,binary,Indicator for primary diagnosis group = Endocrine_Other (ref: Circulatory)
+19,diag1_Genitourinary,binary,Indicator for primary diagnosis group = Genitourinary (ref: Circulatory)
+20,diag1_Infectious,binary,Indicator for primary diagnosis group = Infectious (ref: Circulatory)
+21,diag1_Injury,binary,Indicator for primary diagnosis group = Injury (ref: Circulatory)
+22,diag1_Mental,binary,Indicator for primary diagnosis group = Mental (ref: Circulatory)
+23,diag1_Musculoskeletal,binary,Indicator for primary diagnosis group = Musculoskeletal (ref: Circulatory)
+24,diag1_Neoplasms,binary,Indicator for primary diagnosis group = Neoplasms (ref: Circulatory)
+25,diag1_Other,binary,Indicator for primary diagnosis group = Other (ref: Circulatory)
+26,diag1_Respiratory,binary,Indicator for primary diagnosis group = Respiratory (ref: Circulatory)
+27,diag1_Skin,binary,Indicator for primary diagnosis group = Skin (ref: Circulatory)
+28,comorbid_circulatory,binary,Comorbidity flag: circulatory appears in any of diag_1/2/3
+29,comorbid_diabetes,binary,Comorbidity flag: diabetes appears in any of diag_1/2/3
+30,comorbid_digestive,binary,Comorbidity flag: digestive appears in any of diag_1/2/3
+31,comorbid_genitourinary,binary,Comorbidity flag: genitourinary appears in any of diag_1/2/3
+32,comorbid_infectious,binary,Comorbidity flag: infectious appears in any of diag_1/2/3
+33,comorbid_mental,binary,Comorbidity flag: mental appears in any of diag_1/2/3
+34,comorbid_neoplasms,binary,Comorbidity flag: neoplasms appears in any of diag_1/2/3
+35,comorbid_respiratory,binary,Comorbidity flag: respiratory appears in any of diag_1/2/3
+36,insulin_use,binary,Any insulin prescribed
+37,med_change,binary,Diabetes medication changed during encounter
+38,diabetes_med,binary,Any diabetes medication prescribed
+39,A1C_measured,binary,Indicator: A1C was measured
+40,A1C_level,ordinal,"Ordinal level of A1C (0=not measured, 1=normal, 2/3=elevated)"
+41,glu_measured,binary,Indicator: glu was measured
+42,glu_level,ordinal,"Ordinal level of glu (0=not measured, 1=normal, 2/3=elevated)"

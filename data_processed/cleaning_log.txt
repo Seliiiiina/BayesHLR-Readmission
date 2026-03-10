@@ -1,0 +1,222 @@
+[2026-03-10 15:40:00] ======================================================================
+[2026-03-10 15:40:00] TASK 2: Data Cleaning & Cohort Definition
+[2026-03-10 15:40:00] ======================================================================
+[2026-03-10 15:40:01] Raw data loaded: N_raw = 101766, P_raw = 50
+[2026-03-10 15:40:01] Removed 0 duplicate encounter_id rows
+[2026-03-10 15:40:01] Dropped columns (high missingness / no variance): ['weight', 'payer_code', 'citoglipton', 'examide']
+[2026-03-10 15:40:02] Kept first encounter per patient; removed 30248 repeated encounters
+[2026-03-10 15:40:02] Removed 1545 encounters with expired/hospice discharge
+[2026-03-10 15:40:02] Outcome constructed: readmit_30. Rate = 0.0897 (8.97%)
+[2026-03-10 15:40:02] After cleaning: N_clean = 69973
+[2026-03-10 15:40:02] 
+[2026-03-10 15:40:02] ======================================================================
+[2026-03-10 15:40:02] TASK 3: Specialty Regrouping
+[2026-03-10 15:40:02] ======================================================================
+[2026-03-10 15:40:02] Number of raw specialty categories: 71
+[2026-03-10 15:40:02] Top 10 specialties by count:
+medical_specialty
+Unknown                       32008
+InternalMedicine              10975
+Family/GeneralPractice         5240
+Emergency/Trauma               4433
+Cardiology                     4413
+Surgery-General                2315
+Orthopedics                    1197
+Orthopedics-Reconstructive     1063
+Radiologist                     960
+Nephrology                      865
+[2026-03-10 15:40:02] Regrouping threshold = 250
+[2026-03-10 15:40:02] Number of specialty groups after regrouping: J = 20
+[2026-03-10 15:40:02] Specialty group distribution:
+specialty_group
+Unknown                              32008
+InternalMedicine                     10975
+Family/GeneralPractice                5240
+Emergency/Trauma                      4433
+Cardiology                            4413
+Surgery-General                       2315
+Other                                 2021
+Orthopedics                           1197
+Orthopedics-Reconstructive            1063
+Radiologist                            960
+Nephrology                             865
+Psychiatry                             656
+Pulmonology                            648
+ObstetricsandGynecology                605
+Urology                                559
+Surgery-Cardiovascular/Thoracic        492
+Gastroenterology                       440
+Surgery-Neuro                          413
+Surgery-Vascular                       382
+PhysicalMedicineandRehabilitation      288
+[2026-03-10 15:40:02]   [Sensitivity] threshold= 100 -> J=26
+[2026-03-10 15:40:02]   [Sensitivity] threshold= 250 -> J=20
+[2026-03-10 15:40:02]   [Sensitivity] threshold= 500 -> J=15
+[2026-03-10 15:40:02] Specialty mapping:
+                  specialty_group  group_idx  n_obs
+                       Cardiology          0   4413
+                 Emergency/Trauma          1   4433
+           Family/GeneralPractice          2   5240
+                 Gastroenterology          3    440
+                 InternalMedicine          4  10975
+                       Nephrology          5    865
+          ObstetricsandGynecology          6    605
+                      Orthopedics          7   1197
+       Orthopedics-Reconstructive          8   1063
+                            Other          9   2021
+PhysicalMedicineandRehabilitation         10    288
+                       Psychiatry         11    656
+                      Pulmonology         12    648
+                      Radiologist         13    960
+  Surgery-Cardiovascular/Thoracic         14    492
+                  Surgery-General         15   2315
+                    Surgery-Neuro         16    413
+                 Surgery-Vascular         17    382
+                          Unknown         18  32008
+                          Urology         19    559
+[2026-03-10 15:40:02] 
+[2026-03-10 15:40:02] ======================================================================
+[2026-03-10 15:40:02] TASK 4: Variable Construction
+[2026-03-10 15:40:02] ======================================================================
+[2026-03-10 15:40:02] Age recoded to midpoints. Mean age = 65.4
+[2026-03-10 15:40:02] Dropped 3 rows with unknown gender
+[2026-03-10 15:40:02] Race dummies created. Categories (excl. reference Caucasian): ['race_AfricanAmerican', 'race_Asian', 'race_Hispanic', 'race_Other', 'race_Unknown']
+[2026-03-10 15:40:02] Primary diagnosis groups (from diag_1):
+diagnosis_group
+Circulatory        21385
+Respiratory         9486
+Digestive           6487
+Diabetes            5748
+Other               5206
+Injury              4693
+Musculoskeletal     4064
+Genitourinary       3440
+Neoplasms           2538
+Endocrine_Other     1850
+Skin                1843
+Infectious          1685
+Mental              1545
+[2026-03-10 15:40:02] Primary diagnosis dummies created. Reference category: Circulatory
+[2026-03-10 15:40:02] Building comorbidity indicators from: ['diag_1', 'diag_2', 'diag_3']
+[2026-03-10 15:40:02]   comorbid_circulatory: prevalence = 0.5824 (58.2%)
+[2026-03-10 15:40:02]   comorbid_respiratory: prevalence = 0.2501 (25.0%)
+[2026-03-10 15:40:02]   comorbid_diabetes: prevalence = 0.3943 (39.4%)
+[2026-03-10 15:40:02]   comorbid_digestive: prevalence = 0.1392 (13.9%)
+[2026-03-10 15:40:03]   comorbid_genitourinary: prevalence = 0.1592 (15.9%)
+[2026-03-10 15:40:03]   comorbid_neoplasms: prevalence = 0.0593 (5.9%)
+[2026-03-10 15:40:03]   comorbid_infectious: prevalence = 0.0574 (5.7%)
+[2026-03-10 15:40:03]   comorbid_mental: prevalence = 0.0651 (6.5%)
+[2026-03-10 15:40:04]   n_comorbid_groups: mean = 2.15, max = 3
+[2026-03-10 15:40:04] Medication variables: insulin_use, med_change, diabetes_med
+[2026-03-10 15:40:04] A1Cresult -> A1C_measured (binary) + A1C_level (ordinal 0-3)
+[2026-03-10 15:40:04] max_glu_serum -> glu_measured (binary) + glu_level (ordinal 0-3)
+[2026-03-10 15:40:04] Continuous variables standardised (z-score):
+[2026-03-10 15:40:04]   time_in_hospital: mean=4.273, std=2.934
+[2026-03-10 15:40:04]   num_lab_procedures: mean=42.876, std=19.894
+[2026-03-10 15:40:04]   num_procedures: mean=1.425, std=1.757
+[2026-03-10 15:40:04]   num_medications: mean=15.665, std=8.287
+[2026-03-10 15:40:04]   number_outpatient: mean=0.280, std=1.064
+[2026-03-10 15:40:04]   number_emergency: mean=0.104, std=0.512
+[2026-03-10 15:40:04]   number_inpatient: mean=0.176, std=0.602
+[2026-03-10 15:40:04]   number_diagnoses: mean=7.224, std=2.001
+[2026-03-10 15:40:04]   age_numeric: mean=65.440, std=15.974
+[2026-03-10 15:40:04]   n_comorbid_groups: mean=2.148, std=0.710
+[2026-03-10 15:40:04] 
+Final design matrix: N = 69970, K = 43
+[2026-03-10 15:40:04] Covariate columns (43 total):
+[2026-03-10 15:40:04]   [ 0] time_in_hospital_z
+[2026-03-10 15:40:04]   [ 1] num_lab_procedures_z
+[2026-03-10 15:40:04]   [ 2] num_procedures_z
+[2026-03-10 15:40:04]   [ 3] num_medications_z
+[2026-03-10 15:40:04]   [ 4] number_outpatient_z
+[2026-03-10 15:40:04]   [ 5] number_emergency_z
+[2026-03-10 15:40:04]   [ 6] number_inpatient_z
+[2026-03-10 15:40:04]   [ 7] number_diagnoses_z
+[2026-03-10 15:40:04]   [ 8] age_numeric_z
+[2026-03-10 15:40:04]   [ 9] n_comorbid_groups_z
+[2026-03-10 15:40:04]   [10] female
+[2026-03-10 15:40:04]   [11] race_AfricanAmerican
+[2026-03-10 15:40:04]   [12] race_Asian
+[2026-03-10 15:40:04]   [13] race_Hispanic
+[2026-03-10 15:40:04]   [14] race_Other
+[2026-03-10 15:40:04]   [15] race_Unknown
+[2026-03-10 15:40:04]   [16] diag1_Diabetes
+[2026-03-10 15:40:04]   [17] diag1_Digestive
+[2026-03-10 15:40:04]   [18] diag1_Endocrine_Other
+[2026-03-10 15:40:04]   [19] diag1_Genitourinary
+[2026-03-10 15:40:04]   [20] diag1_Infectious
+[2026-03-10 15:40:04]   [21] diag1_Injury
+[2026-03-10 15:40:04]   [22] diag1_Mental
+[2026-03-10 15:40:04]   [23] diag1_Musculoskeletal
+[2026-03-10 15:40:04]   [24] diag1_Neoplasms
+[2026-03-10 15:40:04]   [25] diag1_Other
+[2026-03-10 15:40:04]   [26] diag1_Respiratory
+[2026-03-10 15:40:04]   [27] diag1_Skin
+[2026-03-10 15:40:04]   [28] comorbid_circulatory
+[2026-03-10 15:40:04]   [29] comorbid_diabetes
+[2026-03-10 15:40:04]   [30] comorbid_digestive
+[2026-03-10 15:40:04]   [31] comorbid_genitourinary
+[2026-03-10 15:40:04]   [32] comorbid_infectious
+[2026-03-10 15:40:04]   [33] comorbid_mental
+[2026-03-10 15:40:04]   [34] comorbid_neoplasms
+[2026-03-10 15:40:04]   [35] comorbid_respiratory
+[2026-03-10 15:40:04]   [36] insulin_use
+[2026-03-10 15:40:04]   [37] med_change
+[2026-03-10 15:40:04]   [38] diabetes_med
+[2026-03-10 15:40:04]   [39] A1C_measured
+[2026-03-10 15:40:04]   [40] A1C_level
+[2026-03-10 15:40:04]   [41] glu_measured
+[2026-03-10 15:40:04]   [42] glu_level
+[2026-03-10 15:40:04] Design matrix verified: no NaN values.
+[2026-03-10 15:40:04] 
+[2026-03-10 15:40:04] ======================================================================
+[2026-03-10 15:40:04] Saving outputs to data_processed/
+[2026-03-10 15:40:04] ======================================================================
+[2026-03-10 15:40:06]   analytic_cohort.csv  ->  69970 rows x 57 cols
+[2026-03-10 15:40:07]   X_matrix.csv         ->  (69970, 43)
+[2026-03-10 15:40:07]   y_vector.csv         ->  69970 rows
+[2026-03-10 15:40:07]   group_index.csv      ->  69970 rows, J = 20
+[2026-03-10 15:40:07]   specialty_mapping.csv
+[2026-03-10 15:40:07]   data_dictionary.csv  ->  43 variables
+[2026-03-10 15:40:07]   .npy arrays saved for sampler
+[2026-03-10 15:40:07]   standardisation_params.csv
+[2026-03-10 15:40:07] 
+[2026-03-10 15:40:07] ======================================================================
+[2026-03-10 15:40:07] SUMMARY -- Manuscript Placeholder Values
+[2026-03-10 15:40:07] ======================================================================
+[2026-03-10 15:40:07]   [N_raw]       = 101766
+[2026-03-10 15:40:07]   [N_final]     = 69970
+[2026-03-10 15:40:07]   [P_raw]       = 50
+[2026-03-10 15:40:07]   [J]           = 20
+[2026-03-10 15:40:07]   [K]           = 43
+[2026-03-10 15:40:07]   [threshold]   = 250
+[2026-03-10 15:40:07]   [X%] overall readmission rate = 8.97%
+[2026-03-10 15:40:07]   Mean age      = 65.4
+[2026-03-10 15:40:07]   Female %      = 53.2%
+[2026-03-10 15:40:07]   Unit of analysis: encounter-level (first encounter per patient)
+[2026-03-10 15:40:07]   Random seed   = 724
+[2026-03-10 15:40:07] 
+  Readmission rate by specialty group:
+[2026-03-10 15:40:07]     PhysicalMedicineandRehabilitation  rate=0.3229  n=288
+[2026-03-10 15:40:07]     Gastroenterology                rate=0.1295  n=440
+[2026-03-10 15:40:07]     Surgery-Vascular                rate=0.1283  n=382
+[2026-03-10 15:40:07]     Psychiatry                      rate=0.1280  n=656
+[2026-03-10 15:40:07]     Nephrology                      rate=0.1260  n=865
+[2026-03-10 15:40:07]     Orthopedics                     rate=0.1094  n=1197
+[2026-03-10 15:40:07]     Family/GeneralPractice          rate=0.1065  n=5240
+[2026-03-10 15:40:07]     InternalMedicine                rate=0.1017  n=10975
+[2026-03-10 15:40:07]     Pulmonology                     rate=0.0941  n=648
+[2026-03-10 15:40:07]     Surgery-General                 rate=0.0920  n=2315
+[2026-03-10 15:40:07]     Radiologist                     rate=0.0865  n=960
+[2026-03-10 15:40:07]     Other                           rate=0.0861  n=2021
+[2026-03-10 15:40:07]     Urology                         rate=0.0841  n=559
+[2026-03-10 15:40:07]     Unknown                         rate=0.0822  n=32006
+[2026-03-10 15:40:07]     Emergency/Trauma                rate=0.0803  n=4433
+[2026-03-10 15:40:07]     Cardiology                      rate=0.0802  n=4412
+[2026-03-10 15:40:07]     Orthopedics-Reconstructive      rate=0.0762  n=1063
+[2026-03-10 15:40:07]     Surgery-Cardiovascular/Thoracic  rate=0.0610  n=492
+[2026-03-10 15:40:07]     Surgery-Neuro                   rate=0.0581  n=413
+[2026-03-10 15:40:07]     ObstetricsandGynecology         rate=0.0430  n=605
+[2026-03-10 15:40:07] 
+  Raw specialty readmission rate range: [0.0430, 0.3229]
+[2026-03-10 15:40:07]   Raw specialty readmission rate SD: 0.0569
