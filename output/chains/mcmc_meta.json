@@ -1,0 +1,22 @@
+{
+  "n_chains": 4,
+  "n_iter": 20000,
+  "burnin": 5000,
+  "thin": 5,
+  "N": 69970,
+  "K": 43,
+  "J": 20,
+  "hyperparams": {
+    "sigma_alpha": 5.0,
+    "s_beta": 2.5,
+    "s_tau": 1.0,
+    "prior_family": "half_normal"
+  },
+  "proposal_sd": {
+    "alpha": 0.151875,
+    "beta": 0.256289,
+    "u": 0.569531,
+    "log_tau": 0.50625
+  },
+  "seed": 724
+}
