@@ -90,6 +90,14 @@ raw_specialty_counts = df["medical_specialty"].value_counts()
 log(f"Number of raw specialty categories: {len(raw_specialty_counts)}")
 log(f"Top 10 specialties by count:\n{raw_specialty_counts.head(10).to_string()}")
 
+# -- 3.1b Drop Unknown specialty records --------------------------------------
+n_before = len(df)
+df = df[df["medical_specialty"] != "Unknown"]
+n_dropped_unknown = n_before - len(df)
+log(f"Dropped {n_dropped_unknown} records with Unknown specialty "
+    f"({n_dropped_unknown/n_before*100:.1f}%)")
+log(f"Remaining: {len(df)} records")
+
 # -- 3.2 Apply regrouping threshold -------------------------------------------
 # Pipeline suggests trying 100 / 250 / 500; target J in [8, 20].
 # Adjust THRESHOLD below based on sensitivity results.
@@ -98,12 +106,8 @@ THRESHOLD = 250
 specialty_counts = df["medical_specialty"].value_counts()
 keep_specialties = specialty_counts[specialty_counts >= THRESHOLD].index.tolist()
 
-# Remove "Unknown" from keep list; it stays as its own group regardless of count
-if "Unknown" in keep_specialties:
-    keep_specialties.remove("Unknown")
-
 df["specialty_group"] = df["medical_specialty"].apply(
-    lambda x: x if x in keep_specialties else ("Unknown" if x == "Unknown" else "Other")
+    lambda x: x if x in keep_specialties else "Other"
 )
 
 J = df["specialty_group"].nunique()
