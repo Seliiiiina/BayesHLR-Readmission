@@ -1,4 +1,4 @@
 model,AUC,Brier_score,log_loss,calibration_slope
 No specialty (baseline),0.6291,0.0852,0.307,1.003
 Specialty fixed effects,0.6411,0.0846,0.3047,0.997
-Bayesian hierarchical,0.6412,0.0846,0.3047,1.023
+Bayesian hierarchical,0.6412,0.0846,0.3047,1.024
