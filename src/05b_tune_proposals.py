@@ -56,6 +56,7 @@ def tune(data_dir="data_processed", output_dir="output/chains"):
     prop_beta = np.full(K, 0.01)
     prop_u = np.full(J, 0.05)
     prop_log_tau = 0.15
+    prop_block = 0.02  # alpha-u block translation move
 
     print(f"\n{'=' * 60}")
     print(f"Per-Coordinate Proposal Tuning")
@@ -73,6 +74,7 @@ def tune(data_dir="data_processed", output_dir="output/chains"):
             "beta": prop_beta.tolist(),
             "u": prop_u.tolist(),
             "log_tau": prop_log_tau,
+            "block": prop_block,
         }
 
         _, diag = sampler.run_mwg(
@@ -86,11 +88,12 @@ def tune(data_dir="data_processed", output_dir="output/chains"):
         ar_beta = np.array(diag["accept_rate_beta_per_k"])
         ar_u = np.array(diag["accept_rate_u_per_j"])
         ar_log_tau = diag["accept_rate_log_tau"]
+        ar_block = diag.get("accept_rate_block", 0)
 
         print(f"  AR: alpha={ar_alpha:.3f}, "
               f"beta=[{ar_beta.min():.3f}, {ar_beta.mean():.3f}, {ar_beta.max():.3f}], "
               f"u=[{ar_u.min():.3f}, {ar_u.mean():.3f}, {ar_u.max():.3f}], "
-              f"log_tau={ar_log_tau:.3f}")
+              f"log_tau={ar_log_tau:.3f}, block={ar_block:.3f}")
 
         history.append({
             "round": round_i + 1,
@@ -137,23 +140,33 @@ def tune(data_dir="data_processed", output_dir="output/chains"):
             prop_log_tau *= 0.5
             all_ok = False
 
+        # block
+        if ar_block > TARGET_AR_HIGH:
+            prop_block *= 1.5
+            all_ok = False
+        elif ar_block < TARGET_AR_LOW:
+            prop_block *= 0.5
+            all_ok = False
+
         # Count how many are in range
         alpha_ok = TARGET_AR_LOW <= ar_alpha <= TARGET_AR_HIGH
         n_beta_ok = int(np.sum((ar_beta >= TARGET_AR_LOW) & (ar_beta <= TARGET_AR_HIGH)))
         n_u_ok = int(np.sum((ar_u >= TARGET_AR_LOW) & (ar_u <= TARGET_AR_HIGH)))
         tau_ok = TARGET_AR_LOW <= ar_log_tau <= TARGET_AR_HIGH
+        block_ok = TARGET_AR_LOW <= ar_block <= TARGET_AR_HIGH
 
         print(f"  In range: alpha={'Y' if alpha_ok else 'N'}, "
               f"beta={n_beta_ok}/{K}, u={n_u_ok}/{J}, "
-              f"log_tau={'Y' if tau_ok else 'N'}")
+              f"log_tau={'Y' if tau_ok else 'N'}, "
+              f"block={'Y' if block_ok else 'N'}")
 
         if all_ok:
             print(f"\n  All acceptance rates in target range. Tuning complete.")
             break
 
         # Relaxed convergence: stop if >= 90% of all parameters are in range
-        total_params = 1 + K + J + 1
-        n_ok = int(alpha_ok) + n_beta_ok + n_u_ok + int(tau_ok)
+        total_params = 1 + K + J + 1 + 1  # +1 for block
+        n_ok = int(alpha_ok) + n_beta_ok + n_u_ok + int(tau_ok) + int(block_ok)
         frac_ok = n_ok / total_params
         if frac_ok >= 0.90:
             print(f"\n  {frac_ok * 100:.0f}% of parameters in range ({n_ok}/{total_params}). "
@@ -172,6 +185,7 @@ def tune(data_dir="data_processed", output_dir="output/chains"):
             "beta": prop_beta.tolist(),
             "u": prop_u.tolist(),
             "log_tau": float(prop_log_tau),
+            "block": float(prop_block),
         },
         "final_accept_rates": {
             "alpha": float(ar_alpha),
@@ -180,6 +194,7 @@ def tune(data_dir="data_processed", output_dir="output/chains"):
             "u_per_j": ar_u.tolist(),
             "u_mean": float(ar_u.mean()),
             "log_tau": float(ar_log_tau),
+            "block": float(ar_block),
         },
         "n_rounds": round_i + 1,
         "tune_iter": TUNE_ITER,
@@ -198,6 +213,7 @@ def tune(data_dir="data_processed", output_dir="output/chains"):
     print(f"    u:        min={prop_u.min():.6f}, "
           f"mean={prop_u.mean():.6f}, max={prop_u.max():.6f}")
     print(f"    log_tau:  {prop_log_tau:.6f}")
+    print(f"    block:    {prop_block:.6f}")
 
     print(f"\n  Use in full run:")
     print(f"    python src/05_mwg_sampler.py --mode full "
