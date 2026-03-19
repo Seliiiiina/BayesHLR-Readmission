@@ -1,0 +1,633 @@
+\documentclass[11pt]{article}
+
+% ── Packages ──────────────────────────────────────────────────────
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{bm}
+\usepackage{booktabs}
+\usepackage{enumitem}
+\usepackage{hyperref}
+\usepackage{cleveref}
+
+% ── Theorem environments ─────────────────────────────────────────
+\newtheorem{proposition}{Proposition}
+\newtheorem{remark}{Remark}
+
+% ── Shortcuts ─────────────────────────────────────────────────────
+\newcommand{\bx}{\bm{x}}
+\newcommand{\bX}{\bm{X}}
+\newcommand{\by}{\bm{y}}
+\newcommand{\bbeta}{\bm{\beta}}
+\newcommand{\bu}{\bm{u}}
+\newcommand{\btheta}{\bm{\theta}}
+\newcommand{\iid}{\overset{\text{iid}}{\sim}}
+\newcommand{\ind}{\overset{\text{ind}}{\sim}}
+\DeclareMathOperator{\logit}{logit}
+\DeclareMathOperator{\Bernoulli}{Bernoulli}
+\DeclareMathOperator{\Normal}{\mathcal{N}}
+\DeclareMathOperator{\HalfNormal}{Half\text{-}Normal}
+\DeclareMathOperator{\HalfCauchy}{Half\text{-}Cauchy}
+
+% ══════════════════════════════════════════════════════════════════
+\title{Posterior Derivation Notes\\[4pt]
+       \large Bayesian Hierarchical Logistic Regression\\
+       for 30-Day Hospital Readmission}
+\author{Selina You \and Zhouhan}
+\date{March 2026}
+
+\begin{document}
+\maketitle
+\tableofcontents
+\newpage
+
+% ══════════════════════════════════════════════════════════════════
+\section{Notation}
+% ══════════════════════════════════════════════════════════════════
+
+\begin{table}[h]
+\centering
+\begin{tabular}{cl}
+\toprule
+Symbol & Meaning \\
+\midrule
+$N = 37{,}964$ & Number of observations (encounters) \\
+$K = 43$        & Number of patient-level covariates \\
+$J = 19$        & Number of medical specialty groups \\
+$y_i \in \{0,1\}$ & 30-day readmission indicator for encounter $i$ \\
+$\bx_i \in \mathbb{R}^K$ & Covariate vector for encounter $i$ \\
+$j[i] \in \{1,\dots,J\}$ & Specialty group index for encounter $i$ \\
+$n_j$ & Number of observations in group $j$ \\
+$\alpha \in \mathbb{R}$ & Global intercept \\
+$\bbeta \in \mathbb{R}^K$ & Fixed-effect coefficients \\
+$u_j \in \mathbb{R}$ & Random intercept for specialty group $j$ \\
+$\bu = (u_1,\dots,u_J)^\top$ & Vector of all random intercepts \\
+$\tau > 0$ & Between-group standard deviation \\
+$\eta_i$ & Linear predictor for observation $i$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% ══════════════════════════════════════════════════════════════════
+\section{Model Specification}
+\label{sec:model}
+% ══════════════════════════════════════════════════════════════════
+
+\subsection{Likelihood (Data Model)}
+
+Conditional on the parameters, outcomes are independent Bernoulli:
+\begin{equation}\label{eq:likelihood-i}
+  y_i \mid \alpha, \bbeta, \bu \;\ind\;
+  \Bernoulli\!\bigl(\pi_i\bigr),
+  \quad i = 1,\dots,N,
+\end{equation}
+where the success probability is linked to the linear predictor through
+the logistic function:
+\begin{equation}\label{eq:eta}
+  \eta_i = \alpha + \bx_i^\top \bbeta + u_{j[i]},
+  \qquad
+  \pi_i = \frac{\exp(\eta_i)}{1 + \exp(\eta_i)}.
+\end{equation}
+
+The full data likelihood is therefore:
+\begin{equation}\label{eq:likelihood}
+  p(\by \mid \alpha, \bbeta, \bu)
+  = \prod_{i=1}^{N} \pi_i^{\,y_i}\,(1-\pi_i)^{1-y_i}
+  = \prod_{i=1}^{N}
+    \frac{\exp(y_i\,\eta_i)}{1+\exp(\eta_i)}.
+\end{equation}
+
+\subsection{Prior Distributions}
+
+We place weakly informative, independent priors on each parameter block.
+
+\paragraph{Intercept.}
+\begin{equation}\label{eq:prior-alpha}
+  \alpha \sim \Normal(0,\;\sigma_\alpha^2),
+  \qquad \sigma_\alpha = 5.
+\end{equation}
+
+\paragraph{Fixed effects.}
+\begin{equation}\label{eq:prior-beta}
+  \beta_k \iid \Normal(0,\;s_\beta^2),
+  \qquad k = 1,\dots,K, \quad s_\beta = 2.5.
+\end{equation}
+
+\paragraph{Random intercepts (conditional on $\tau$).}
+\begin{equation}\label{eq:prior-u}
+  u_j \mid \tau \iid \Normal(0,\;\tau^2),
+  \qquad j = 1,\dots,J.
+\end{equation}
+This is the core hierarchical component: the $u_j$ are exchangeable given
+the shared scale $\tau$, which induces partial pooling of the specialty
+effects toward zero.
+
+\paragraph{Between-group scale (hyperprior).}
+The baseline prior is
+\begin{equation}\label{eq:prior-tau-hn}
+  \tau \sim \HalfNormal(0,\;s_\tau^2),
+  \qquad s_\tau = 1.0,
+\end{equation}
+with density
+$p(\tau) = \frac{2}{\sqrt{2\pi}\,s_\tau}\exp\!\bigl(-\tfrac{\tau^2}{2s_\tau^2}\bigr)$
+for $\tau > 0$.
+
+As a sensitivity alternative (Section~\ref{sec:sensitivity}), we also consider
+\begin{equation}\label{eq:prior-tau-hc}
+  \tau \sim \HalfCauchy(0,\;s_\tau),
+  \qquad
+  p(\tau) = \frac{2}{\pi\,s_\tau}\,
+  \frac{1}{1 + \tau^2 / s_\tau^2},
+  \quad \tau > 0.
+\end{equation}
+
+\subsection{Assumptions}
+\begin{enumerate}[label=(\roman*)]
+  \item Conditional independence: $y_i \perp y_{i'} \mid \alpha, \bbeta, \bu$ for $i \neq i'$.
+  \item Each patient appears only once in the cohort (first encounter per patient retained).
+  \item Specialty group assignment $j[i]$ is treated as fixed (not modelled).
+  \item The random intercepts $u_j$ capture unobserved specialty-level heterogeneity; no random slopes are included.
+  \item Prior independence: $\alpha$, $\bbeta$, and $\tau$ are mutually independent \textit{a priori}; $\bu$ depends on $\tau$ only.
+\end{enumerate}
+
+\subsection{Hyperparameters}
+
+\begin{table}[h]
+\centering
+\begin{tabular}{cll}
+\toprule
+Symbol & Value & Role \\
+\midrule
+$\sigma_\alpha$ & 5.0 & Prior SD for the intercept; covers plausible baseline log-odds \\
+$s_\beta$ & 2.5 & Prior SD for each fixed effect; allows OR up to $\sim e^{5} \approx 150$ \\
+$s_\tau$ & 1.0 & Scale of the half-normal prior on $\tau$; concentrates mass near zero \\
+\bottomrule
+\end{tabular}
+\caption{Hyperparameter settings and their interpretation.}
+\label{tab:hyperparams}
+\end{table}
+
+% ══════════════════════════════════════════════════════════════════
+\section{Joint Distribution and Log-Posterior}
+\label{sec:posterior}
+% ══════════════════════════════════════════════════════════════════
+
+\subsection{Joint Distribution}
+
+By the conditional independence structure of the model:
+\begin{equation}\label{eq:joint}
+  p(\by,\alpha,\bbeta,\bu,\tau \mid \bX)
+  = \underbrace{p(\by \mid \alpha,\bbeta,\bu,\bX)}_{\text{likelihood}}
+    \;\underbrace{p(\alpha)}_{\text{prior on }\alpha}
+    \;\underbrace{p(\bbeta)}_{\text{prior on }\bbeta}
+    \;\underbrace{p(\bu\mid\tau)}_{\text{random effects}}
+    \;\underbrace{p(\tau)}_{\text{hyperprior}}.
+\end{equation}
+
+\subsection{Posterior Distribution (Up to Proportionality)}
+
+By Bayes' theorem:
+\begin{equation}\label{eq:posterior}
+  p(\alpha,\bbeta,\bu,\tau \mid \by, \bX)
+  \;\propto\;
+  p(\by \mid \alpha,\bbeta,\bu,\bX)\;
+  p(\alpha)\;p(\bbeta)\;p(\bu\mid\tau)\;p(\tau).
+\end{equation}
+
+\subsection{Log-Posterior}
+
+Taking logarithms and substituting Eqs.~\eqref{eq:likelihood}--\eqref{eq:prior-tau-hn}:
+\begin{align}\label{eq:log-posterior}
+  \ell(\alpha,\bbeta,\bu,\tau)
+  &\;=\; \log p(\alpha,\bbeta,\bu,\tau \mid \by,\bX) + \text{const.} \notag\\
+  &\;=\;
+  \underbrace{\sum_{i=1}^{N}
+    \bigl[y_i\,\eta_i - \log(1+e^{\eta_i})\bigr]}_{\text{(I) log-likelihood}}
+  \;-\;
+  \underbrace{\frac{\alpha^2}{2\sigma_\alpha^2}}_{\text{(II) prior on }\alpha}
+  \;-\;
+  \underbrace{\frac{1}{2s_\beta^2}\sum_{k=1}^{K}\beta_k^2}_{\text{(III) prior on }\bbeta}
+  \notag\\
+  &\quad\;-\;
+  \underbrace{J\log\tau \;+\;
+  \frac{1}{2\tau^2}\sum_{j=1}^{J}u_j^2}_{\text{(IV) }p(\bu\mid\tau)}
+  \;-\;
+  \underbrace{\frac{\tau^2}{2s_\tau^2}}_{\text{(V) hyperprior on }\tau}.
+\end{align}
+
+\begin{remark}
+The log-likelihood term uses the identity
+$\log\bigl(\pi_i^{y_i}(1-\pi_i)^{1-y_i}\bigr) = y_i\eta_i - \log(1+e^{\eta_i})$,
+which avoids computing $\pi_i$ explicitly and is numerically stable
+when implemented as $\log(1+e^{\eta_i}) = \texttt{logaddexp}(0,\eta_i)$.
+\end{remark}
+
+% ══════════════════════════════════════════════════════════════════
+\section{Metropolis-within-Gibbs Sampling Strategy}
+\label{sec:mwg}
+% ══════════════════════════════════════════════════════════════════
+
+The posterior~\eqref{eq:posterior} does not have a standard closed form
+due to the logistic likelihood (non-conjugacy). We use a
+\textbf{Metropolis-within-Gibbs (MwG)} sampler that cycles through five
+parameter blocks at each iteration, updating each block conditional on
+the current values of all others.
+
+\subsection{General Metropolis--Hastings Framework}
+
+For a generic block parameter $\theta$ with full conditional target
+$h(\theta) = \log p(\theta \mid \text{rest})$:
+
+\begin{enumerate}
+  \item Propose $\theta^* \sim q(\theta^* \mid \theta^{(t)})$.
+  \item Compute $\log R = h(\theta^*) - h(\theta^{(t)}) + \log q(\theta^{(t)} \mid \theta^*) - \log q(\theta^* \mid \theta^{(t)})$.
+  \item Set $\theta^{(t+1)} = \theta^*$ with probability $\min(1, e^{\log R})$; otherwise keep $\theta^{(t)}$.
+\end{enumerate}
+
+All our proposals use \textbf{symmetric random walks}
+$\theta^* = \theta^{(t)} + \epsilon$, $\epsilon \sim \Normal(0, \sigma_{\text{prop}}^2)$,
+so $q(\theta^* \mid \theta) = q(\theta \mid \theta^*)$ and the Hastings
+ratio cancels:
+\begin{equation}\label{eq:metropolis-ratio}
+  \log R = h(\theta^*) - h(\theta^{(t)}).
+\end{equation}
+
+% ──────────────────────────────────────────────────────────────────
+\subsection{Block 1: Update $\alpha$ (Intercept)}
+\label{sec:block-alpha}
+
+\paragraph{Full conditional.}
+Collecting all terms in~\eqref{eq:log-posterior} that depend on $\alpha$:
+\begin{equation}\label{eq:fc-alpha}
+  h(\alpha) = \sum_{i=1}^{N}
+    \bigl[y_i\,\eta_i - \log(1+e^{\eta_i})\bigr]
+  - \frac{\alpha^2}{2\sigma_\alpha^2},
+\end{equation}
+where $\eta_i = \alpha + \bx_i^\top\bbeta + u_{j[i]}$.
+
+\paragraph{Proposal and acceptance.}
+\begin{align}
+  &\alpha^* = \alpha^{(t)} + \epsilon, \quad \epsilon \sim \Normal(0,\sigma_{\alpha,\text{prop}}^2), \label{eq:prop-alpha}\\
+  &\log R = h(\alpha^*) - h(\alpha^{(t)}). \label{eq:ar-alpha}
+\end{align}
+
+\paragraph{Computational note.}
+When evaluating $h(\alpha^*)$, we do \emph{not} recompute $\eta$
+from scratch. Instead, $\eta^* = \eta^{(t)} + (\alpha^* - \alpha^{(t)})$
+shifts every entry by a constant, costing $O(N)$ rather than $O(NK)$.
+
+% ──────────────────────────────────────────────────────────────────
+\subsection{Block 2: Update $\beta_k$ (Fixed Effects, Component-wise)}
+\label{sec:block-beta}
+
+Each $\beta_k$ is updated individually while holding all other
+components fixed (a \emph{scalar-at-a-time} Gibbs scan within the
+$\bbeta$ block).
+
+\paragraph{Full conditional for $\beta_k$.}
+\begin{equation}\label{eq:fc-beta}
+  h(\beta_k) = \sum_{i=1}^{N}
+    \bigl[y_i\,\eta_i - \log(1+e^{\eta_i})\bigr]
+  - \frac{\beta_k^2}{2s_\beta^2}.
+\end{equation}
+
+\paragraph{Proposal and acceptance.}
+\begin{align}
+  &\beta_k^* = \beta_k^{(t)} + \epsilon, \quad \epsilon \sim \Normal(0,\sigma_{\beta_k,\text{prop}}^2), \label{eq:prop-beta}\\
+  &\log R = h(\beta_k^*) - h(\beta_k^{(t)}). \label{eq:ar-beta}
+\end{align}
+
+\paragraph{Computational note.}
+The linear predictor update is
+$\eta_i^* = \eta_i^{(t)} + (\beta_k^* - \beta_k^{(t)})\,X_{ik}$,
+which costs $O(N)$ per coordinate rather than $O(NK)$ for a full
+recomputation.
+
+% ──────────────────────────────────────────────────────────────────
+\subsection{Block 3: Update $u_j$ (Random Intercepts, Component-wise)}
+\label{sec:block-u}
+
+\paragraph{Full conditional for $u_j$.}
+Only observations in group $j$ contribute to the likelihood:
+\begin{equation}\label{eq:fc-u}
+  h(u_j) = \sum_{i:\,j[i]=j}
+    \bigl[y_i\,\eta_i - \log(1+e^{\eta_i})\bigr]
+  - \frac{u_j^2}{2\tau^2}.
+\end{equation}
+
+\paragraph{Proposal and acceptance.}
+\begin{align}
+  &u_j^* = u_j^{(t)} + \epsilon, \quad \epsilon \sim \Normal(0,\sigma_{u_j,\text{prop}}^2), \label{eq:prop-u}\\
+  &\log R = h(u_j^*) - h(u_j^{(t)}). \label{eq:ar-u}
+\end{align}
+
+\paragraph{Computational advantage.}
+The sum in~\eqref{eq:fc-u} runs over $n_j$ observations (the size of
+specialty group $j$), not all $N$. For each group we pre-index the
+relevant observations, reducing cost from $O(N)$ to $O(n_j)$ per update.
+
+% ──────────────────────────────────────────────────────────────────
+\subsection{Block 4: Update $\tau$ via $\phi = \log\tau$}
+\label{sec:block-tau}
+
+Since $\tau > 0$, we reparametrise $\phi = \log\tau$ so that the
+proposal operates on the unconstrained real line.
+
+\paragraph{Change of variable.}
+Under the map $\tau = e^\phi$, the Jacobian is
+$\bigl|\frac{d\tau}{d\phi}\bigr| = e^\phi = \tau$,
+which contributes an additive $+\phi$ to the log-density.
+
+\paragraph{Full conditional for $\phi = \log\tau$.}
+Collecting terms (IV) and (V) from~\eqref{eq:log-posterior} and adding
+the Jacobian:
+\begin{equation}\label{eq:fc-log-tau}
+  h(\phi)
+  = -J\,\phi
+    - \frac{1}{2e^{2\phi}}\sum_{j=1}^{J}u_j^2
+    - \frac{e^{2\phi}}{2s_\tau^2}
+    + \phi.
+\end{equation}
+
+\begin{remark}[Why $\tau$ does not depend on the likelihood]
+The likelihood involves $\bu$ but not $\tau$ directly.
+Conditional on $\bu$, the data $\by$ are independent of $\tau$.
+Data inform $\tau$ only \emph{indirectly} through the posterior draws
+of $\bu$: large spread in the $u_j$'s pulls $\tau$ upward, while
+concentrated $u_j$'s pull $\tau$ toward zero.
+This is a defining feature of the hierarchical structure.
+\end{remark}
+
+\paragraph{Proposal and acceptance.}
+\begin{align}
+  &\phi^* = \phi^{(t)} + \epsilon, \quad \epsilon \sim \Normal(0,\sigma_{\phi,\text{prop}}^2), \label{eq:prop-tau}\\
+  &\log R = h(\phi^*) - h(\phi^{(t)}). \label{eq:ar-tau}
+\end{align}
+
+\paragraph{Sensitivity variant: Half-Cauchy.}
+Under $\tau \sim \HalfCauchy(0,s_\tau)$, the last term in
+\eqref{eq:fc-log-tau} is replaced:
+\begin{equation}\label{eq:fc-log-tau-hc}
+  h_{\text{HC}}(\phi)
+  = -J\,\phi
+    - \frac{1}{2e^{2\phi}}\sum_{j=1}^{J}u_j^2
+    - \log\!\Bigl(1 + \frac{e^{2\phi}}{s_\tau^2}\Bigr)
+    + \phi.
+\end{equation}
+
+% ──────────────────────────────────────────────────────────────────
+\subsection{Block 5: Joint Translation Move}
+\label{sec:block-joint}
+
+\paragraph{Motivation.}
+The intercept $\alpha$ and the random intercepts $\bu$ are
+\emph{weakly identified} relative to each other: adding a constant $c$
+to $\alpha$ and subtracting $c$ from every $u_j$ leaves $\eta_i$
+unchanged. Blocks~1 and~3 alone explore this ``ridge'' slowly. A
+dedicated joint move accelerates mixing dramatically.
+
+\paragraph{Proposal.}
+\begin{equation}\label{eq:joint-move}
+  \alpha^* = \alpha + \delta, \qquad
+  u_j^* = u_j - \delta \;\;\forall\, j,
+  \qquad \delta \sim \Normal(0,\sigma_{\text{blk}}^2).
+\end{equation}
+Because $\eta_i^* = \alpha^* + \bx_i^\top\bbeta + u_{j[i]}^*
+= (\alpha + \delta) + \bx_i^\top\bbeta + (u_{j[i]} - \delta) = \eta_i$,
+the linear predictor is invariant. Therefore the likelihood cancels
+exactly in the acceptance ratio, and only the priors matter:
+\begin{equation}\label{eq:ar-block}
+  \log R
+  = \underbrace{\log p(\alpha^*) - \log p(\alpha)}_{\text{intercept prior}}
+  + \underbrace{\log p(\bu^*\mid\tau) - \log p(\bu\mid\tau)}_{\text{random effect prior}}
+  = -\frac{{\alpha^*}^2 - \alpha^2}{2\sigma_\alpha^2}
+    - \frac{\sum_j {u_j^*}^2 - \sum_j u_j^2}{2\tau^2}.
+\end{equation}
+
+\paragraph{Cost.} This move is $O(J)$ with \emph{no likelihood
+evaluation}, so we repeat it $R = 10$ times per iteration at negligible cost.
+
+% ──────────────────────────────────────────────────────────────────
+\subsection{Full Iteration Summary}
+
+One iteration $t \to t+1$ of the MwG sampler proceeds as:
+\begin{enumerate}
+  \item Update $\alpha$ (Block~1, Section~\ref{sec:block-alpha}).
+  \item For $k = 1,\dots,K$: update $\beta_k$ (Block~2, Section~\ref{sec:block-beta}).
+  \item For $j = 1,\dots,J$: update $u_j$ (Block~3, Section~\ref{sec:block-u}).
+  \item Update $\phi = \log\tau$ (Block~4, Section~\ref{sec:block-tau}).
+  \item Repeat $R = 10$ times: joint translation of $(\alpha, \bu)$ (Block~5, Section~\ref{sec:block-joint}).
+\end{enumerate}
+Each sub-step conditions on the \emph{most recently updated} values of
+all other parameters. This defines a valid Gibbs scan whose stationary
+distribution is the posterior~\eqref{eq:posterior}.
+
+% ══════════════════════════════════════════════════════════════════
+\section{Posterior Propriety}
+\label{sec:propriety}
+% ══════════════════════════════════════════════════════════════════
+
+\begin{proposition}
+Under the model specified in Section~\ref{sec:model}, the posterior
+$p(\alpha,\bbeta,\bu,\tau \mid \by,\bX)$ is proper (i.e., integrable).
+\end{proposition}
+
+\begin{proof}[Proof sketch]
+We verify integrability of each factor:
+
+\begin{enumerate}
+  \item \textbf{Likelihood.} For any fixed $(\alpha,\bbeta,\bu)$, the
+  Bernoulli likelihood is bounded: $0 \le p(y_i \mid \eta_i) \le 1$,
+  so $0 \le p(\by \mid \alpha,\bbeta,\bu) \le 1$.
+
+  \item \textbf{Prior on $\alpha$.} $\alpha \sim \Normal(0, 25)$ is a
+  proper Gaussian, so $\int p(\alpha)\,d\alpha = 1$.
+
+  \item \textbf{Prior on $\bbeta$.} Each $\beta_k \sim \Normal(0, 6.25)$
+  independently; the product of $K$ proper Gaussians is proper.
+
+  \item \textbf{Conditional prior $p(\bu \mid \tau)$.} For any fixed
+  $\tau > 0$, each $u_j \sim \Normal(0,\tau^2)$ is proper.
+
+  \item \textbf{Hyperprior on $\tau$.} The half-normal
+  $\HalfNormal(0, s_\tau^2)$ is a proper distribution on $(0,\infty)$.
+
+  \item \textbf{Integrability of the joint.} Since the likelihood is
+  bounded above by~1:
+  \[
+    \int p(\by \mid \cdot)\,p(\alpha)\,p(\bbeta)\,p(\bu\mid\tau)\,p(\tau)
+    \;d\alpha\,d\bbeta\,d\bu\,d\tau
+    \;\le\;
+    \underbrace{\int p(\alpha)\,d\alpha}_{=1}\;
+    \underbrace{\int p(\bbeta)\,d\bbeta}_{=1}\;
+    \int p(\tau)\underbrace{\int p(\bu\mid\tau)\,d\bu}_{=1}\,d\tau
+    = 1 < \infty.
+  \]
+\end{enumerate}
+Since all priors are proper and the likelihood is bounded, the posterior
+is proper.
+\end{proof}
+
+% ══════════════════════════════════════════════════════════════════
+\section{Identifiability}
+\label{sec:identifiability}
+% ══════════════════════════════════════════════════════════════════
+
+\paragraph{Weak non-identifiability of $\alpha$ and $\bu$.}
+If we define $\alpha' = \alpha + c$ and $u_j' = u_j - c$ for any
+constant $c$, the linear predictor $\eta_i$ is unchanged. This means
+the likelihood alone cannot separate $\alpha$ from the mean of $\bu$.
+In the Bayesian framework, this is resolved by the priors:
+\begin{itemize}
+  \item $p(\alpha) = \Normal(0,\sigma_\alpha^2)$ anchors $\alpha$ near zero.
+  \item $p(u_j\mid\tau) = \Normal(0,\tau^2)$ centers each $u_j$ at zero.
+\end{itemize}
+Together these priors break the translation invariance and make the
+marginal posteriors of $\alpha$ and $\bu$ well-defined. Nevertheless,
+the posterior correlation between $\alpha$ and $\bar{u} = J^{-1}\sum u_j$
+can be high, leading to slow mixing. The joint translation move
+(Block~5, Section~\ref{sec:block-joint}) specifically addresses this.
+
+\paragraph{Fixed effects.}
+All continuous covariates are standardised (zero mean, unit variance),
+which prevents collinearity between the intercept and covariate means.
+Categorical covariates use reference-category coding (Caucasian for race,
+Circulatory for primary diagnosis), ensuring full-rank design.
+
+% ══════════════════════════════════════════════════════════════════
+\section{Likelihood-Driven vs.\ Prior-Driven Behavior}
+\label{sec:lik-vs-prior}
+% ══════════════════════════════════════════════════════════════════
+
+\paragraph{Fixed effects $\bbeta$.}
+With $N = 37{,}964$ observations and weakly informative priors
+($s_\beta = 2.5$), the posteriors of $\bbeta$ are overwhelmingly
+likelihood-driven. The prior contributes negligible shrinkage for
+well-identified covariates; sensitivity analysis with $s_\beta = 5$
+confirms that posteriors are virtually unchanged.
+
+\paragraph{Random intercepts $u_j$.}
+The degree of shrinkage depends on group size $n_j$:
+\begin{itemize}
+  \item \textbf{Large groups} (e.g., InternalMedicine, $n_j = 10{,}975$):
+    the group-specific likelihood dominates, and $u_j$ is primarily
+    likelihood-driven.
+  \item \textbf{Small groups} (e.g., PhysicalMedicine, $n_j = 288$):
+    the prior $u_j \mid \tau \sim \Normal(0,\tau^2)$ exerts stronger
+    shrinkage toward zero --- this is the \emph{partial pooling} property
+    of hierarchical models.
+\end{itemize}
+
+\paragraph{Between-group scale $\tau$.}
+The hyperprior $\tau \sim \HalfNormal(0,1)$ has moderate influence when
+$J$ is small. With $J = 19$ groups, the posterior of $\tau$ is primarily
+determined by the empirical spread of the $u_j$'s. The sensitivity
+analysis (Section~\ref{sec:sensitivity}) confirms this: changing
+$s_\tau$ from 1.0 to 2.5 or switching to a half-Cauchy has minimal
+effect on the posterior of $\tau$.
+
+% ══════════════════════════════════════════════════════════════════
+\section{MCMC Implementation Details}
+\label{sec:mcmc-details}
+% ══════════════════════════════════════════════════════════════════
+
+\subsection{Proposal Tuning}
+
+Each proposal standard deviation $\sigma_{\text{prop}}$ is tuned
+automatically over 10 rounds of short pilot runs (2,000 iterations each)
+using a multiplicative adaptation rule: if the acceptance rate exceeds
+the target (0.44 for scalars, per Roberts \& Rosenthal, 2001),
+$\sigma_{\text{prop}}$ is multiplied by 1.5; if below target, it is
+divided by 1.5. Per-coordinate proposal SDs are maintained for each
+$\beta_k$ and $u_j$ to accommodate varying posterior curvatures.
+
+\subsection{Chain Configuration}
+
+\begin{itemize}
+  \item \textbf{Number of chains:} 4, with dispersed random initialisations.
+  \item \textbf{Iterations per chain:} 30,000 total.
+  \item \textbf{Burn-in:} 8,000 (discarded).
+  \item \textbf{Thinning:} every 5th sample retained $\Rightarrow$ 4,400 samples per chain, 17,600 pooled.
+  \item \textbf{Random seed:} 724 (deterministic reproducibility).
+\end{itemize}
+
+\subsection{Why Metropolis-within-Gibbs?}
+
+The logistic likelihood prevents closed-form full conditionals, ruling
+out standard Gibbs sampling. Full-dimensional Metropolis--Hastings on
+the $(1 + K + J + 1)$-dimensional parameter space would have a
+prohibitively low acceptance rate. MwG decomposes the problem into
+manageable scalar updates, each with its own tuned proposal,
+yielding robust acceptance rates (target $\sim$30--50\%).
+
+% ══════════════════════════════════════════════════════════════════
+\section{Deviance Information Criterion (DIC)}
+\label{sec:dic}
+% ══════════════════════════════════════════════════════════════════
+
+The DIC provides a Bayesian measure of model fit penalised by complexity:
+\begin{equation}
+  \text{DIC} = \bar{D} + p_D,
+\end{equation}
+where
+\begin{align}
+  D(\btheta) &= -2\log p(\by \mid \btheta)
+    = -2\sum_{i=1}^{N}\bigl[y_i\eta_i - \log(1+e^{\eta_i})\bigr], \label{eq:deviance}\\
+  \bar{D} &= \mathbb{E}_{\btheta\mid\by}\bigl[D(\btheta)\bigr]
+    \approx \frac{1}{S}\sum_{s=1}^{S}D(\btheta^{(s)}), \label{eq:dbar}\\
+  D(\bar{\btheta}) &= D\text{ evaluated at }\hat{\btheta} = \mathbb{E}[\btheta\mid\by], \label{eq:dthetabar}\\
+  p_D &= \bar{D} - D(\bar{\btheta}). \label{eq:pd}
+\end{align}
+Here $\btheta = (\alpha, \bbeta, \bu)$ collects all parameters entering
+the linear predictor, and $S$ is the number of posterior samples.
+
+$p_D$ is the \textbf{effective number of parameters}. For our model
+with 64 nominal parameters ($1 + 43 + 19 + 1$), the hierarchical prior
+on $\bu$ induces shrinkage, so we expect $p_D < 64$.
+
+% ══════════════════════════════════════════════════════════════════
+\section{Sensitivity Analysis}
+\label{sec:sensitivity}
+% ══════════════════════════════════════════════════════════════════
+
+We re-run the sampler under three alternative prior configurations:
+
+\begin{table}[h]
+\centering
+\begin{tabular}{llll}
+\toprule
+Label & Change & $s_\beta$ & $\tau$ prior \\
+\midrule
+Baseline & --- & 2.5 & $\HalfNormal(0, 1.0)$ \\
+A1 & Wider $\beta$ prior & 5.0 & $\HalfNormal(0, 1.0)$ \\
+B1 & Wider $\tau$ prior & 2.5 & $\HalfNormal(0, 2.5)$ \\
+B2 & Heavy-tailed $\tau$ prior & 2.5 & $\HalfCauchy(0, 2.5)$ \\
+\bottomrule
+\end{tabular}
+\caption{Prior sensitivity configurations.}
+\end{table}
+
+The goal is to verify that posterior conclusions (especially the
+magnitude of $\tau$ and the key fixed effects) are robust to
+reasonable changes in prior specification.
+
+% ══════════════════════════════════════════════════════════════════
+\section{Posterior Predictive Checks}
+\label{sec:ppc}
+% ══════════════════════════════════════════════════════════════════
+
+For each of $S_{\text{rep}} = 200$ posterior draws
+$\btheta^{(s)} = (\alpha^{(s)}, \bbeta^{(s)}, \bu^{(s)})$:
+\begin{enumerate}
+  \item Compute $\pi_i^{(s)} = \logit^{-1}(\alpha^{(s)} + \bx_i^\top\bbeta^{(s)} + u_{j[i]}^{(s)})$.
+  \item Simulate $y_i^{\text{rep}(s)} \sim \Bernoulli(\pi_i^{(s)})$ for all $i$.
+  \item Compute test statistics $T(\by^{\text{rep}(s)})$:
+    \begin{itemize}
+      \item Overall readmission rate: $T_1 = \bar{y}^{\text{rep}}$.
+      \item Specialty rate variability: $T_2 = \text{SD}$ of group-level rates.
+    \end{itemize}
+\end{enumerate}
+The Bayesian p-value is $p_B = \Pr\bigl(T(\by^{\text{rep}}) \ge T(\by^{\text{obs}})\bigr)$.
+Values near 0.5 indicate good calibration; values near 0 or 1 indicate
+systematic model misfit.
+
+\end{document}
