@@ -1,0 +1,678 @@
+\documentclass[11pt]{article}
+
+% ── Packages ──────────────────────────────────────────────────────
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{bm}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{enumitem}
+\usepackage{hyperref}
+\usepackage{cleveref}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{float}
+\usepackage{setspace}
+\usepackage{natbib}
+
+\onehalfspacing
+
+% ── Figure path ───────────────────────────────────────────────────
+\graphicspath{{../output/figures/}}
+
+% ── Shortcuts ─────────────────────────────────────────────────────
+\newcommand{\bx}{\bm{x}}
+\newcommand{\bX}{\bm{X}}
+\newcommand{\by}{\bm{y}}
+\newcommand{\bbeta}{\bm{\beta}}
+\newcommand{\bu}{\bm{u}}
+\newcommand{\btheta}{\bm{\theta}}
+\newcommand{\iid}{\overset{\text{iid}}{\sim}}
+\newcommand{\ind}{\overset{\text{ind}}{\sim}}
+\DeclareMathOperator{\logit}{logit}
+\DeclareMathOperator{\Bernoulli}{Bernoulli}
+\DeclareMathOperator{\Normal}{\mathcal{N}}
+\DeclareMathOperator{\HalfNormal}{Half\text{-}Normal}
+\DeclareMathOperator{\HalfCauchy}{Half\text{-}Cauchy}
+
+\newtheorem{proposition}{Proposition}
+\newtheorem{remark}{Remark}
+
+% ══════════════════════════════════════════════════════════════════
+\title{\textbf{Bayesian Hierarchical Logistic Regression for\\
+       30-Day Hospital Readmission Among Diabetic Patients:\\
+       The Role of Medical Specialty}}
+\author{Selina You \and Zhouhan}
+\date{March 2026}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Hospital readmission within 30 days is a costly and clinically important outcome.
+We investigate whether medical specialty contributes to readmission risk
+after adjusting for patient-level characteristics, using a Bayesian hierarchical
+logistic regression model with specialty-specific random intercepts.
+The model is fitted via a custom Metropolis-within-Gibbs sampler on a cohort
+of 37,964 diabetic patient encounters across 19 specialty groups.
+We find substantive between-specialty heterogeneity ($\hat{\tau} = 0.437$,
+95\% CrI $[0.298, 0.644]$), with Physical Medicine and Rehabilitation showing
+significantly elevated readmission risk.  Key patient-level predictors include
+prior inpatient visits (OR $= 1.22$), comorbid neoplasms (OR $= 1.51$), and
+A1C measurement (OR $= 1.42$).  Prior sensitivity analysis confirms robustness
+of all conclusions.
+\end{abstract}
+
+% ══════════════════════════════════════════════════════════════════
+\section{Introduction}
+% ══════════════════════════════════════════════════════════════════
+
+Unplanned hospital readmissions within 30 days of discharge represent a
+significant burden on healthcare systems, with estimated annual costs exceeding
+\$26 billion in the United States alone.  For patients with diabetes---a
+population characterised by high comorbidity and complex medication
+regimens---readmission rates are particularly elevated.
+
+Prior work has identified patient-level predictors of readmission (e.g., length
+of stay, number of prior admissions, comorbidity burden), typically using
+standard logistic regression.  However, an important structural feature is
+often ignored: patients are treated by physicians from different medical
+specialties, and these specialties may differ systematically in their
+post-discharge care patterns, case mix beyond what is captured by available
+covariates, or practice style.  Ignoring this clustering can lead to biased
+standard errors and missed opportunities for targeted intervention.
+
+\paragraph{Research question.}
+\emph{Does specialty-level heterogeneity significantly contribute to 30-day
+readmission risk among diabetic patients, after adjusting for patient-level
+covariates?}
+
+\paragraph{Why a Bayesian approach?}
+A Bayesian hierarchical model offers three advantages over frequentist
+alternatives for this problem:
+\begin{enumerate}[label=(\roman*)]
+  \item \textbf{Partial pooling.}  Small-sample specialties (e.g.,
+    Physical Medicine, $n = 288$) borrow strength from larger groups through
+    the shared hyperparameter $\tau$, yielding more stable estimates than
+    either complete pooling (ignoring specialty) or no pooling (fixed effects).
+  \item \textbf{Coherent uncertainty quantification.}  Posterior credible
+    intervals for $\tau$ directly quantify our uncertainty about the
+    \emph{magnitude} of between-specialty variation, rather than reducing
+    this to a single $p$-value.
+  \item \textbf{Principled model comparison.}  The Deviance Information
+    Criterion (DIC) and posterior predictive checks provide model
+    assessment tools that are native to the Bayesian framework.
+\end{enumerate}
+
+% ══════════════════════════════════════════════════════════════════
+\section{Data and Cohort Definition}
+% ══════════════════════════════════════════════════════════════════
+
+\subsection{Data Source}
+
+We use the \emph{Diabetes 130-US Hospitals} dataset, which contains 101,766
+inpatient encounters from 130 US hospitals over a 10-year period (1999--2008).
+Each record includes patient demographics, admission details, diagnoses
+(ICD-9 codes), laboratory results, and medication information.
+
+\subsection{Cohort Construction}
+
+Starting from $N_{\text{raw}} = 101{,}766$ encounters, we applied the
+following inclusion criteria:
+\begin{enumerate}
+  \item \textbf{Remove duplicates and retain first encounter} per patient,
+    yielding one independent observation per individual
+    (removed 30,248 repeated encounters).
+  \item \textbf{Exclude expired/hospice discharges} (removed 1,545 records)
+    to focus on patients at risk for readmission.
+  \item \textbf{Exclude unknown specialty} (removed 32,008 records, 45.7\%)
+    since specialty group assignment is central to our research question.
+\end{enumerate}
+The resulting analytic cohort contains $N = 37{,}964$ encounters across
+$J = 19$ specialty groups, with an overall 30-day readmission rate of 9.60\%.
+
+\subsection{Cohort Characteristics}
+
+Table~\ref{tab:cohort} summarises the cohort.  The mean age is 64.9 years,
+53.5\% are female, and 73.0\% are Caucasian.  Readmitted patients tend to be
+older, have longer hospital stays, more medications, more prior inpatient
+visits, and more diagnoses on record.
+
+\begin{table}[H]
+\centering
+\small
+\caption{Selected cohort characteristics by readmission status.
+Values are mean (SD) or $n$ (\%).}
+\label{tab:cohort}
+\begin{tabular}{lccc}
+\toprule
+Variable & Overall ($N = 37{,}964$) & Readmit = 0 & Readmit = 1 \\
+\midrule
+Age, years & 64.9 (16.3) & 64.6 (16.4) & 67.9 (14.9) \\
+Length of stay, days & 4.3 (3.0) & 4.2 (2.9) & 4.9 (3.1) \\
+No.\ lab procedures & 42.9 (19.7) & 42.8 (19.8) & 44.6 (19.2) \\
+No.\ medications & 15.4 (8.4) & 15.3 (8.4) & 16.6 (8.4) \\
+No.\ prior inpatient visits & 0.2 (0.6) & 0.2 (0.6) & 0.4 (1.0) \\
+No.\ diagnoses & 6.9 (2.1) & 6.9 (2.1) & 7.3 (1.9) \\
+Female & 53.5\% & 53.4\% & 54.6\% \\
+Caucasian & 73.0\% & 72.9\% & 74.1\% \\
+Insulin use & 51.1\% & 50.7\% & 54.5\% \\
+Any diabetes medication & 76.6\% & 76.2\% & 80.5\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Specialty group sizes range from 288 (Physical Medicine and Rehabilitation) to
+10,975 (Internal Medicine), with raw readmission rates spanning 4.3\%
+(Obstetrics/Gynecology) to 32.3\% (Physical Medicine and Rehabilitation).
+Figure~\ref{fig:specialty-dist} shows the specialty distribution.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.85\textwidth]{fig1_specialty_distribution.png}
+\caption{Distribution of encounters across the 19 specialty groups.}
+\label{fig:specialty-dist}
+\end{figure}
+
+% ══════════════════════════════════════════════════════════════════
+\section{Model Specification}
+\label{sec:model}
+% ══════════════════════════════════════════════════════════════════
+
+\subsection{Likelihood}
+
+Let $y_i \in \{0,1\}$ denote whether encounter $i$ resulted in 30-day
+readmission.  Conditional on parameters, outcomes are independent Bernoulli:
+\begin{equation}
+  y_i \mid \alpha, \bbeta, \bu \;\ind\;
+  \Bernoulli(\pi_i), \quad
+  \pi_i = \frac{\exp(\eta_i)}{1 + \exp(\eta_i)}, \quad
+  \eta_i = \alpha + \bx_i^\top \bbeta + u_{j[i]},
+\end{equation}
+where $\bx_i \in \mathbb{R}^{K}$ is the covariate vector ($K = 43$),
+$j[i] \in \{1,\dots,J\}$ indicates the specialty group, and $u_{j[i]}$
+is the specialty-specific random intercept.
+
+The full likelihood is:
+\begin{equation}
+  p(\by \mid \alpha, \bbeta, \bu)
+  = \prod_{i=1}^{N} \frac{\exp(y_i\,\eta_i)}{1 + \exp(\eta_i)}.
+\end{equation}
+
+\subsection{Prior Distributions}
+
+\begin{align}
+  \alpha &\sim \Normal(0, \sigma_\alpha^2), && \sigma_\alpha = 5, \\
+  \beta_k &\iid \Normal(0, s_\beta^2), && s_\beta = 2.5, \quad k = 1,\dots,K, \\
+  u_j \mid \tau &\iid \Normal(0, \tau^2), && j = 1,\dots,J, \\
+  \tau &\sim \HalfNormal(0, s_\tau^2), && s_\tau = 1.0.
+\end{align}
+The priors are weakly informative: $\sigma_\alpha = 5$ places the baseline
+log-odds within a wide plausible range; $s_\beta = 2.5$ allows odds ratios up
+to $\sim e^5 \approx 150$; $\tau \sim \HalfNormal(0,1)$ concentrates mass
+near zero while permitting substantial heterogeneity.
+
+\subsection{Hierarchical Structure}
+
+The key feature is the exchangeable random intercepts
+$u_j \mid \tau \iid \Normal(0, \tau^2)$.  The shared scale $\tau$ induces
+\emph{partial pooling}: specialty estimates are shrunk toward the global mean,
+with the degree of shrinkage inversely related to group size $n_j$.  When
+$\tau \to 0$, all specialties collapse to a single intercept (complete
+pooling); as $\tau \to \infty$, each group estimates its own intercept
+independently (no pooling).
+
+\subsection{Assumptions}
+\begin{enumerate}[label=(\roman*)]
+  \item Conditional independence of outcomes given parameters.
+  \item One observation per patient (first encounter retained).
+  \item Specialty assignment is exogenous (not modelled).
+  \item Only random intercepts; no random slopes.
+  \item Prior independence: $\alpha \perp \bbeta \perp \tau$ \textit{a priori};
+    $\bu$ depends on $\tau$ only.
+\end{enumerate}
+
+% ══════════════════════════════════════════════════════════════════
+\section{Posterior Derivation}
+\label{sec:derivation}
+% ══════════════════════════════════════════════════════════════════
+
+\subsection{Joint Distribution and Posterior}
+
+By Bayes' theorem:
+\begin{equation}
+  p(\alpha,\bbeta,\bu,\tau \mid \by, \bX)
+  \;\propto\;
+  p(\by \mid \alpha,\bbeta,\bu,\bX)\;
+  p(\alpha)\;p(\bbeta)\;p(\bu\mid\tau)\;p(\tau).
+\end{equation}
+
+\subsection{Log-Posterior}
+
+Substituting the likelihood and priors:
+\begin{align}
+  \ell(\alpha,\bbeta,\bu,\tau)
+  &= \underbrace{\sum_{i=1}^{N}
+    \bigl[y_i\,\eta_i - \log(1+e^{\eta_i})\bigr]}_{\text{(I) log-likelihood}}
+  - \underbrace{\frac{\alpha^2}{2\sigma_\alpha^2}}_{\text{(II)}}
+  - \underbrace{\frac{1}{2s_\beta^2}\sum_{k=1}^{K}\beta_k^2}_{\text{(III)}}
+  \notag\\
+  &\quad
+  - \underbrace{J\log\tau + \frac{1}{2\tau^2}\sum_{j=1}^{J}u_j^2}_{\text{(IV)}}
+  - \underbrace{\frac{\tau^2}{2s_\tau^2}}_{\text{(V)}}
+  + \text{const.}
+  \label{eq:logpost}
+\end{align}
+
+The logistic likelihood makes this posterior non-conjugate: no parameter block
+has a closed-form full conditional.
+
+\subsection{Full Conditional Distributions}
+
+We derive the log-target $h(\cdot)$ for each parameter block by collecting
+terms from~\eqref{eq:logpost} that depend on the parameter being updated.
+
+\paragraph{Block 1: $\alpha$.}
+\begin{equation}
+  h(\alpha) = \sum_{i=1}^{N}
+    \bigl[y_i\eta_i - \log(1+e^{\eta_i})\bigr]
+  - \frac{\alpha^2}{2\sigma_\alpha^2}.
+\end{equation}
+
+\paragraph{Block 2: $\beta_k$ (for each $k = 1,\dots,K$).}
+\begin{equation}
+  h(\beta_k) = \sum_{i=1}^{N}
+    \bigl[y_i\eta_i - \log(1+e^{\eta_i})\bigr]
+  - \frac{\beta_k^2}{2s_\beta^2}.
+\end{equation}
+
+\paragraph{Block 3: $u_j$ (for each $j = 1,\dots,J$).}
+Only group-$j$ observations contribute:
+\begin{equation}
+  h(u_j) = \sum_{i:\,j[i]=j}
+    \bigl[y_i\eta_i - \log(1+e^{\eta_i})\bigr]
+  - \frac{u_j^2}{2\tau^2}.
+\end{equation}
+
+\paragraph{Block 4: $\phi = \log\tau$ (reparametrised).}
+Applying the change of variable $\tau = e^\phi$ with Jacobian $+\phi$:
+\begin{equation}
+  h(\phi) = -J\phi - \frac{1}{2e^{2\phi}}\sum_{j=1}^{J}u_j^2
+            - \frac{e^{2\phi}}{2s_\tau^2} + \phi.
+\end{equation}
+Importantly, $h(\phi)$ does not involve the likelihood: data inform $\tau$
+only indirectly through the posterior draws of $\bu$.
+
+\subsection{Posterior Propriety}
+
+\begin{proposition}
+The posterior is proper.
+\end{proposition}
+\begin{proof}[Proof sketch]
+The Bernoulli likelihood is bounded ($0 \le p(\by \mid \cdot) \le 1$), and
+all priors ($\alpha$, $\bbeta$, $\bu \mid \tau$, $\tau$) are proper
+distributions.  Therefore the joint integrand is bounded above by the product
+of proper priors, which integrates to 1.
+\end{proof}
+
+\subsection{Identifiability}
+
+The intercept $\alpha$ and random intercepts $\bu$ are weakly
+non-identifiable: shifting $\alpha$ by $+c$ and each $u_j$ by $-c$ leaves
+$\eta_i$ unchanged.  The priors $p(\alpha)$ and $p(\bu \mid \tau)$ break this
+symmetry by anchoring both at zero.  We further address this computationally
+with a joint translation move (Block~5 in Section~\ref{sec:computation}).
+
+% ══════════════════════════════════════════════════════════════════
+\section{Computational Strategy}
+\label{sec:computation}
+% ══════════════════════════════════════════════════════════════════
+
+\subsection{Metropolis-within-Gibbs Sampler}
+
+The non-conjugate logistic likelihood rules out Gibbs sampling with
+closed-form conditionals.  Full-dimensional Metropolis--Hastings on the
+$(1 + K + J + 1) = 64$-dimensional space would have prohibitively low
+acceptance rates.  We therefore use \textbf{Metropolis-within-Gibbs (MwG)},
+which decomposes the posterior into manageable blocks updated sequentially.
+
+Each block uses a symmetric random walk proposal
+$\theta^* = \theta^{(t)} + \epsilon$, $\epsilon \sim \Normal(0,
+\sigma_{\text{prop}}^2)$, so the Hastings ratio cancels and the acceptance
+probability reduces to $\min(1, \exp[h(\theta^*) - h(\theta^{(t)})])$.
+
+\subsection{Block Update Schedule}
+
+One full iteration proceeds as:
+\begin{enumerate}
+  \item \textbf{Block 1:} Update $\alpha$. Cost: $O(N)$ via incremental $\eta$ update.
+  \item \textbf{Block 2:} For $k = 1,\dots,43$: update $\beta_k$.
+    Cost: $O(N)$ per coordinate (incremental $\eta$ shift by $\Delta\beta_k \cdot X_{ik}$).
+  \item \textbf{Block 3:} For $j = 1,\dots,19$: update $u_j$.
+    Cost: $O(n_j)$ per group (only group-$j$ observations evaluated).
+  \item \textbf{Block 4:} Update $\phi = \log\tau$. Cost: $O(J)$.
+  \item \textbf{Block 5:} Joint translation move ($\alpha,\bu$), repeated
+    $R=10$ times. Propose $\delta \sim \Normal(0, \sigma_{\text{blk}}^2)$,
+    set $\alpha^* = \alpha + \delta$, $u_j^* = u_j - \delta$.
+    Since $\eta$ is invariant, the likelihood cancels and only priors
+    appear in the acceptance ratio. Cost: $O(J)$ with no likelihood evaluation.
+\end{enumerate}
+
+\subsection{Proposal Tuning}
+
+Proposal standard deviations are tuned automatically over 10 rounds of pilot
+runs (2,000 iterations each on a subsample of $n = 20{,}000$).  A
+multiplicative rule scales $\sigma_{\text{prop}}$ by $\times 1.5$ if the
+acceptance rate exceeds 0.44, and by $\div 1.5$ if below.  Per-coordinate
+proposal SDs are maintained for each $\beta_k$ and $u_j$ to accommodate
+varying posterior curvatures.
+
+Final acceptance rates: $\alpha$: 0.40, $\bbeta$ (mean): 0.43,
+$\bu$ (mean): 0.43, $\log\tau$: 0.37, block: 0.45---all within the
+recommended 0.20--0.50 range.
+
+\subsection{Chain Configuration}
+
+We run 4 independent chains with dispersed random initialisations:
+30,000 iterations per chain, burn-in of 8,000, thinning every 5th sample,
+yielding 4,400 post-burn-in samples per chain and 17,600 pooled samples.
+
+% ══════════════════════════════════════════════════════════════════
+\section{Diagnostic Analysis}
+\label{sec:diagnostics}
+% ══════════════════════════════════════════════════════════════════
+
+\subsection{Trace Plots and Autocorrelation}
+
+Figure~\ref{fig:trace} shows trace plots and autocorrelation functions for
+representative parameters.  All four chains mix well and overlap,
+indicating convergence.  Autocorrelation decays rapidly to near zero within
+20--50 lags for most parameters.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{fig2_trace_plots.png}
+\caption{Trace plots (left) and autocorrelation functions (right) for
+selected parameters.  The four chains are overlaid in different colours.}
+\label{fig:trace}
+\end{figure}
+
+\subsection{Effective Sample Size}
+
+Table~\ref{tab:ess} summarises the effective sample size (ESS) across
+parameter types.  All parameters have mean ESS $> 100$; most exceed 500.
+The between-group scale $\tau$ has ESS $\approx 2{,}412$, indicating
+excellent mixing for the key hyperparameter.
+
+\begin{table}[H]
+\centering
+\caption{Effective sample size summary by parameter type.}
+\label{tab:ess}
+\begin{tabular}{lrrr}
+\toprule
+Parameter block & Min ESS & Median ESS & Max ESS \\
+\midrule
+$\alpha$ (intercept) & 245 & 306 & 372 \\
+$\bbeta$ (43 fixed effects) & 118 & 866 & 3{,}358 \\
+$\tau$ (between-group SD) & 2{,}286 & 2{,}412 & 2{,}661 \\
+$\bu$ (19 random intercepts) & 1{,}593 & 3{,}490 & 4{,}118 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% ══════════════════════════════════════════════════════════════════
+\section{Results and Inference}
+\label{sec:results}
+% ══════════════════════════════════════════════════════════════════
+
+\subsection{Fixed Effects}
+
+Table~\ref{tab:fixed} presents the posterior summaries for the most important
+fixed effects.  We focus on coefficients whose 95\% credible interval (CrI)
+excludes zero.
+
+\begin{table}[H]
+\centering
+\small
+\caption{Key fixed effects: posterior mean, 95\% credible interval, and odds
+ratio.  Only coefficients with CrI excluding zero are shown.}
+\label{tab:fixed}
+\begin{tabular}{lrrrr}
+\toprule
+Variable & Post.\ mean & 95\% CrI & OR & OR 95\% CrI \\
+\midrule
+\emph{Increased risk} \\
+\quad No.\ prior inpatient (z) & 0.201 & [0.175, 0.227] & 1.22 & [1.19, 1.25] \\
+\quad Comorbid neoplasms & 0.415 & [0.198, 0.631] & 1.51 & [1.22, 1.88] \\
+\quad A1C measured & 0.352 & [0.154, 0.552] & 1.42 & [1.17, 1.74] \\
+\quad Diabetes medication & 0.168 & [0.057, 0.277] & 1.18 & [1.06, 1.32] \\
+\quad Age (z) & 0.165 & [0.123, 0.208] & 1.18 & [1.13, 1.23] \\
+\quad No.\ diagnoses (z) & 0.154 & [0.111, 0.199] & 1.17 & [1.12, 1.22] \\
+\quad Comorbid diabetes & 0.113 & [0.004, 0.224] & 1.12 & [1.00, 1.25] \\
+\quad Length of stay (z) & 0.088 & [0.047, 0.128] & 1.09 & [1.05, 1.14] \\
+\quad No.\ medications (z) & 0.071 & [0.024, 0.117] & 1.07 & [1.02, 1.12] \\
+\midrule
+\emph{Decreased risk} \\
+\quad Diag: Neoplasms & $-0.507$ & [$-0.792$, $-0.217$] & 0.60 & [0.45, 0.81] \\
+\quad Diag: Respiratory & $-0.360$ & [$-0.519$, $-0.200$] & 0.70 & [0.59, 0.82] \\
+\quad Diag: Other & $-0.347$ & [$-0.515$, $-0.181$] & 0.71 & [0.60, 0.83] \\
+\quad No.\ procedures (z) & $-0.048$ & [$-0.091$, $-0.006$] & 0.95 & [0.91, 0.99] \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Interpretation.}
+The strongest patient-level predictor of readmission is \textbf{prior
+inpatient visits} (OR $= 1.22$ per SD increase), reflecting a pattern of
+recurrent hospitalisation.  \textbf{Comorbid neoplasms} carries the highest
+odds ratio (OR $= 1.51$), suggesting that cancer as a secondary diagnosis
+substantially elevates readmission risk.  Conversely, having \textbf{neoplasms
+as the primary diagnosis} is protective (OR $= 0.60$), likely because these
+patients are discharged to oncology follow-up pathways.
+
+The A1C measurement indicator (OR $= 1.42$) likely reflects disease severity
+rather than a causal effect of testing: sicker patients are more likely to have
+A1C measured.  Notably, sex, race, and insulin use are \emph{not} significant
+predictors after adjustment.
+
+\subsection{Specialty-Level Heterogeneity}
+
+\paragraph{Between-group scale $\tau$.}
+The posterior mean of $\tau$ is 0.437 (SD $= 0.090$, 95\% CrI [0.298, 0.644]),
+with $P(\tau > 0.1 \mid \by) = 1.0$ and $P(\tau > 0.2 \mid \by) = 1.0$.
+This provides strong evidence that specialty-level heterogeneity persists after
+adjusting for patient covariates.
+
+\paragraph{Specialty random effects.}
+Figure~\ref{fig:forest} displays the posterior random intercepts with 95\% CrI.
+\textbf{Physical Medicine and Rehabilitation} (PMR) has a markedly elevated
+random intercept ($\hat{u} = +1.32$, 95\% CrI [0.99, 1.67]), the only
+specialty whose interval is entirely above zero.  At the other extreme,
+\textbf{Surgery-Cardiovascular/Thoracic} has a significantly negative effect
+($\hat{u} = -0.58$, 95\% CrI [$-0.99$, $-0.21$]).  Most other specialties
+have credible intervals that include zero, indicating that after covariate
+adjustment, their readmission rates are consistent with the overall average.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.75\textwidth]{fig4_specialty_random_effects.png}
+\caption{Specialty random effects (posterior mean and 95\% CrI).  Red:
+interval entirely above zero; blue: entirely below zero; grey: includes zero.}
+\label{fig:forest}
+\end{figure}
+
+\subsection{Model Comparison}
+
+Table~\ref{tab:comparison} compares three models on in-sample predictive
+performance.
+
+\begin{table}[H]
+\centering
+\caption{Model comparison metrics.}
+\label{tab:comparison}
+\begin{tabular}{lcccc}
+\toprule
+Model & AUC & Brier Score & Log-Loss & Calibration Slope \\
+\midrule
+No specialty (baseline) & 0.629 & 0.0852 & 0.307 & 1.003 \\
+Specialty fixed effects & 0.641 & 0.0846 & 0.305 & 0.997 \\
+Bayesian hierarchical & 0.641 & 0.0846 & 0.305 & 1.024 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The hierarchical model matches fixed-effects performance on discrimination
+(AUC) and calibration, while offering the advantages of partial pooling for
+small groups and a coherent estimate of between-group variability.
+
+\paragraph{DIC.}  The DIC for the hierarchical model is
+$\text{DIC} = 23{,}254$ with effective number of parameters
+$p_D = 60.5$.  The nominal parameter count is 64
+($1 + 43 + 19 + 1$); $p_D < 64$ confirms that the hierarchical
+prior induces shrinkage on the random intercepts, as expected.
+
+\subsection{Posterior Predictive Checks}
+
+Figure~\ref{fig:ppc} shows the posterior predictive checks.  The observed
+overall readmission rate (9.60\%) falls squarely within the replicated
+distribution (Bayesian $p$-value $= 0.500$), and the observed
+specialty-rate variability is also well-captured ($p$-value $= 0.245$).
+Both checks confirm adequate model fit.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{fig5_posterior_predictive.png}
+\caption{Posterior predictive checks.  (A) Overall readmission rate.
+(B) Standard deviation of specialty-level rates.  Dashed red lines show
+observed values.}
+\label{fig:ppc}
+\end{figure}
+
+% ══════════════════════════════════════════════════════════════════
+\section{Sensitivity Analysis}
+\label{sec:sensitivity}
+% ══════════════════════════════════════════════════════════════════
+
+We assess robustness to prior specification by re-running the sampler under
+three alternative configurations:
+\begin{itemize}
+  \item \textbf{A1:} Wider fixed-effect prior ($s_\beta = 5.0$).
+  \item \textbf{B1:} Wider hyperprior ($s_\tau = 2.5$, Half-Normal).
+  \item \textbf{B2:} Heavy-tailed hyperprior ($s_\tau = 2.5$, Half-Cauchy).
+\end{itemize}
+
+\paragraph{Results.}
+Figure~\ref{fig:sens-tau} shows that the posterior of $\tau$ is virtually
+identical across all four configurations (means: 0.437, 0.437, 0.441, 0.440),
+confirming that the data overwhelm the prior for this hyperparameter.
+Figure~\ref{fig:sens-beta} demonstrates that key fixed effects (e.g.,
+$\text{diag1\_Neoplasms}$, $\text{comorbid\_neoplasms}$, $\text{A1C\_measured}$)
+are stable across prior specifications.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.85\textwidth]{fig6_sensitivity_tau.png}
+\caption{Posterior distribution of $\tau$ under four prior configurations.}
+\label{fig:sens-tau}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.85\textwidth]{fig7_sensitivity_beta.png}
+\caption{Posterior means and 95\% CrI for key fixed effects under four prior
+configurations.}
+\label{fig:sens-beta}
+\end{figure}
+
+\paragraph{Conclusion.}
+All substantive findings are robust to reasonable variation in prior
+specification.  This is consistent with the large sample size ($N = 37{,}964$)
+providing strong likelihood information that dominates the weakly informative
+priors.
+
+% ══════════════════════════════════════════════════════════════════
+\section{Discussion}
+\label{sec:discussion}
+% ══════════════════════════════════════════════════════════════════
+
+\subsection{Summary of Findings}
+
+Our analysis provides three main findings:
+
+\begin{enumerate}
+  \item \textbf{Specialty matters.}  The between-specialty standard deviation
+    $\tau = 0.437$ (95\% CrI [0.298, 0.644]) demonstrates that medical
+    specialty contributes meaningfully to readmission risk beyond what is
+    explained by patient characteristics.
+
+  \item \textbf{PMR is an outlier.}  Physical Medicine and Rehabilitation shows
+    dramatically elevated readmission risk ($u = +1.32$, corresponding to a
+    raw rate of 32.3\%), even after adjusting for covariates.  This may
+    reflect the unique patient population (e.g., stroke rehabilitation
+    patients with high medical complexity) and could represent a target for
+    quality improvement.
+
+  \item \textbf{Key patient-level risk factors.}  Prior inpatient visits,
+    comorbid neoplasms, A1C measurement, age, and number of diagnoses are
+    the strongest predictors, collectively painting a picture of
+    \emph{medical complexity} as the primary driver of readmission.
+\end{enumerate}
+
+\subsection{Likelihood-Driven vs.\ Prior-Driven Behavior}
+
+With $N = 37{,}964$ observations, the posteriors of fixed effects $\bbeta$ are
+overwhelmingly data-driven: the sensitivity analysis confirms negligible
+prior influence.  The random intercepts exhibit a gradient: large groups
+(e.g., Internal Medicine, $n = 10{,}975$) are likelihood-driven, while small
+groups (e.g., PMR, $n = 288$) experience meaningful shrinkage toward zero.
+The hyperparameter $\tau$ is estimated primarily from the empirical spread
+of the $u_j$'s, with $J = 19$ groups providing sufficient information.
+
+\subsection{Limitations}
+
+\begin{enumerate}
+  \item \textbf{Unknown specialty exclusion.}  We dropped 45.7\% of
+    encounters with unrecorded specialty.  These patients may differ
+    systematically from those with known specialty assignment, potentially
+    introducing selection bias.
+
+  \item \textbf{No random slopes.}  Our model assumes that covariate effects
+    are constant across specialties.  In practice, the effect of (e.g.)
+    comorbidity burden may vary by specialty; random slopes could capture this
+    but would substantially increase model complexity.
+
+  \item \textbf{Temporal and institutional confounding.}  The data span
+    10 years across 130 hospitals, but we do not model hospital-level or
+    temporal effects.  Specialty effects may partly reflect unmeasured
+    hospital-level variation.
+
+  \item \textbf{Observational design.}  Specialty assignment is not random;
+    patients are referred based on clinical need.  The estimated specialty
+    effects reflect residual confounding as well as genuine practice
+    differences.
+
+  \item \textbf{Moderate discriminative performance.}  AUC $= 0.641$ reflects
+    the inherent difficulty of predicting readmission from administrative
+    data alone.  Clinical notes and social determinants of health---unavailable
+    in this dataset---would likely improve prediction.
+\end{enumerate}
+
+\subsection{Future Directions}
+
+Extensions could include: (i) a crossed random effects model with both
+specialty and hospital groupings; (ii) random slopes for key covariates;
+(iii) a time-varying model to capture temporal trends in readmission;
+(iv) incorporation of the ``unknown specialty'' group via a mixture model.
+
+% ══════════════════════════════════════════════════════════════════
+\section*{Code Availability}
+% ══════════════════════════════════════════════════════════════════
+
+All code is available at
+\url{https://github.com/Seliiiiina/BayesHLR-Readmission}.
+The analysis pipeline consists of seven Python scripts (\texttt{src/01}
+through \texttt{src/07}), each corresponding to a stage of the analysis.
+The MCMC sampler is implemented from scratch without external Bayesian
+modelling software.
+
+\end{document}
