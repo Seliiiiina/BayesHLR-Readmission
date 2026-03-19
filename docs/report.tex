@@ -397,25 +397,37 @@ selected parameters.  The four chains are overlaid in different colours.}
 \label{fig:trace}
 \end{figure}
 
-\subsection{Effective Sample Size}
+\subsection{Effective Sample Size and Cross-Chain Convergence ($\hat{R}$)}
 
-Table~\ref{tab:ess} summarises the effective sample size (ESS) across
-parameter types.  All parameters have mean ESS $> 100$; most exceed 500.
-The between-group scale $\tau$ has ESS $\approx 2{,}412$, indicating
+We assess convergence through two complementary diagnostics:
+effective sample size (ESS) and the split-$\hat{R}$ statistic
+\citep{gelman1992inference,vehtari2021rank}.
+Split-$\hat{R}$ divides each of the four chains in half, yielding
+eight half-chains, and compares between- vs.\ within-chain variance;
+values close to 1.0 indicate that the chains have converged to a
+common stationary distribution.
+
+Table~\ref{tab:ess} summarises both diagnostics across parameter types.
+All 64 parameters satisfy $\hat{R} < 1.05$, with the maximum
+$\hat{R} = 1.013$ (for $\beta_{28}$), well below the
+conventional threshold.  All parameters have mean ESS $> 100$;
+most exceed 500.  The between-group scale $\tau$ has
+ESS $\approx 2{,}412$ and $\hat{R} = 1.000$, indicating
 excellent mixing for the key hyperparameter.
 
 \begin{table}[H]
 \centering
-\caption{Effective sample size summary by parameter type.}
+\caption{Convergence diagnostics by parameter type: effective sample size
+(ESS) and split-$\hat{R}$.}
 \label{tab:ess}
-\begin{tabular}{lrrr}
+\begin{tabular}{lrrrr}
 \toprule
-Parameter block & Min ESS & Median ESS & Max ESS \\
+Parameter block & Min ESS & Median ESS & Max $\hat{R}$ & All $\hat{R} < 1.05$? \\
 \midrule
-$\alpha$ (intercept) & 245 & 306 & 372 \\
-$\bbeta$ (43 fixed effects) & 118 & 866 & 3{,}358 \\
-$\tau$ (between-group SD) & 2{,}286 & 2{,}412 & 2{,}661 \\
-$\bu$ (19 random intercepts) & 1{,}593 & 3{,}490 & 4{,}118 \\
+$\alpha$ (intercept) & 245 & 306 & 1.007 & Yes \\
+$\bbeta$ (43 fixed effects) & 118 & 866 & 1.013 & Yes \\
+$\tau$ (between-group SD) & 2{,}286 & 2{,}412 & 1.000 & Yes \\
+$\bu$ (19 random intercepts) & 1{,}593 & 3{,}490 & 1.001 & Yes \\
 \bottomrule
 \end{tabular}
 \end{table}

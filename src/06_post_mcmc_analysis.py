@@ -129,6 +129,47 @@ def compute_ess_single(x):
     return max(1.0, ess)
 
 
+def compute_split_rhat(chain_samples):
+    """
+    Split R-hat (Gelman-Rubin) diagnostic for a single parameter.
+
+    Parameters
+    ----------
+    chain_samples : list of 1-D arrays
+        One array per chain (post burn-in samples).
+
+    Returns
+    -------
+    rhat : float
+        Split R-hat.  Values close to 1.0 indicate convergence;
+        the standard threshold is Rhat < 1.05 (or stricter, < 1.01).
+    """
+    # Split each chain in half → 2m half-chains
+    halves = []
+    for ch in chain_samples:
+        mid = len(ch) // 2
+        halves.append(ch[:mid])
+        halves.append(ch[mid:2 * mid])   # equal lengths
+
+    m = len(halves)
+    n = len(halves[0])
+
+    chain_means = np.array([h.mean() for h in halves])
+    grand_mean = chain_means.mean()
+
+    # Between-chain variance B
+    B = n / (m - 1) * np.sum((chain_means - grand_mean) ** 2)
+
+    # Within-chain variance W
+    W = np.mean([np.var(h, ddof=1) for h in halves])
+
+    # Pooled posterior variance estimate
+    var_hat = (n - 1) / n * W + B / n
+
+    rhat = np.sqrt(var_hat / W) if W > 0 else float("nan")
+    return rhat
+
+
 def run_diagnostics(chains, meta, var_names, spec_names):
     """Task 11: Trace plots, ACF, ESS for ALL parameters, acceptance rates."""
     print("\n" + "=" * 60)
@@ -141,68 +182,85 @@ def run_diagnostics(chains, meta, var_names, spec_names):
     J = chains[0]["u"].shape[1]
 
     # =================================================================
-    # A. Compute ESS for ALL parameters (alpha, all beta, tau, all u)
+    # A. Compute ESS and split-Rhat for ALL parameters
     # =================================================================
-    all_ess_records = []
+    all_diag_records = []
 
     # alpha
     ess_vals = [compute_ess_single(c["alpha"]) for c in chains]
-    all_ess_records.append({
+    rhat_val = compute_split_rhat([c["alpha"] for c in chains])
+    all_diag_records.append({
         "parameter": "alpha", "label": r"$\alpha$",
         **{f"ESS_chain_{i}": ess_vals[i] for i in range(n_chains)},
         "ESS_mean": np.mean(ess_vals),
+        "Rhat": rhat_val,
     })
 
     # all betas
     for k in range(K):
         vname = var_names[k] if k < len(var_names) else f"beta_{k}"
         ess_vals = [compute_ess_single(c["beta"][:, k]) for c in chains]
-        all_ess_records.append({
+        rhat_val = compute_split_rhat([c["beta"][:, k] for c in chains])
+        all_diag_records.append({
             "parameter": f"beta_{k}", "label": f"$\\beta_{{{k}}}$ ({vname})",
             **{f"ESS_chain_{i}": ess_vals[i] for i in range(n_chains)},
             "ESS_mean": np.mean(ess_vals),
+            "Rhat": rhat_val,
         })
 
     # tau
     ess_vals = [compute_ess_single(c["tau"]) for c in chains]
-    all_ess_records.append({
+    rhat_val = compute_split_rhat([c["tau"] for c in chains])
+    all_diag_records.append({
         "parameter": "tau", "label": r"$\tau$",
         **{f"ESS_chain_{i}": ess_vals[i] for i in range(n_chains)},
         "ESS_mean": np.mean(ess_vals),
+        "Rhat": rhat_val,
     })
 
     # all u's
     for j in range(J):
         sname = spec_names[j] if j < len(spec_names) else f"u_{j}"
         ess_vals = [compute_ess_single(c["u"][:, j]) for c in chains]
-        all_ess_records.append({
+        rhat_val = compute_split_rhat([c["u"][:, j] for c in chains])
+        all_diag_records.append({
             "parameter": f"u_{j}", "label": f"$u_{{{j}}}$ ({sname})",
             **{f"ESS_chain_{i}": ess_vals[i] for i in range(n_chains)},
             "ESS_mean": np.mean(ess_vals),
+            "Rhat": rhat_val,
         })
 
-    ess_df = pd.DataFrame(all_ess_records)
+    ess_df = pd.DataFrame(all_diag_records)
     ess_df.to_csv(TAB_DIR / "diagnostics_summary.csv", index=False)
     print(f"  Saved diagnostics_summary.csv ({len(ess_df)} parameters)")
 
-    # --- Print full ESS summary ---
-    print(f"\n  ESS Summary (all {len(ess_df)} parameters):")
-    print(f"  {'Parameter':>40s}  {'ESS_mean':>8s}  {'Min chain':>10s}")
-    print(f"  {'-'*40}  {'-'*8}  {'-'*10}")
+    # --- Print full ESS + Rhat summary ---
+    print(f"\n  Convergence Summary (all {len(ess_df)} parameters):")
+    print(f"  {'Parameter':>40s}  {'ESS_mean':>8s}  {'Min ESS':>8s}  {'Rhat':>6s}")
+    print(f"  {'-'*40}  {'-'*8}  {'-'*8}  {'-'*6}")
     ess_chain_cols = [f"ESS_chain_{i}" for i in range(n_chains)]
     for _, row in ess_df.iterrows():
         min_ess = min(row[c] for c in ess_chain_cols)
-        flag = " *** LOW" if row["ESS_mean"] < 100 else ""
-        print(f"  {row['parameter']:>40s}  {row['ESS_mean']:>8.0f}  {min_ess:>10.0f}{flag}")
+        rhat_flag = " ***" if row["Rhat"] > 1.05 else ""
+        ess_flag = " ***" if row["ESS_mean"] < 100 else ""
+        print(f"  {row['parameter']:>40s}  {row['ESS_mean']:>8.0f}{ess_flag}  "
+              f"{min_ess:>8.0f}  {row['Rhat']:>6.4f}{rhat_flag}")
 
     # --- Flag problematic parameters ---
     low_ess = ess_df[ess_df["ESS_mean"] < 100].copy()
+    high_rhat = ess_df[ess_df["Rhat"] > 1.05].copy()
     if len(low_ess) > 0:
         print(f"\n  *** WARNING: {len(low_ess)} parameter(s) with mean ESS < 100:")
         for _, row in low_ess.iterrows():
             print(f"      {row['parameter']:>40s}: ESS = {row['ESS_mean']:.0f}")
     else:
         print(f"\n  All parameters have mean ESS >= 100.")
+    if len(high_rhat) > 0:
+        print(f"\n  *** WARNING: {len(high_rhat)} parameter(s) with Rhat > 1.05:")
+        for _, row in high_rhat.iterrows():
+            print(f"      {row['parameter']:>40s}: Rhat = {row['Rhat']:.4f}")
+    else:
+        print(f"  All parameters have split-Rhat < 1.05 (convergence criterion met).")
 
     # =================================================================
     # B. Trace plots for representative parameters
@@ -232,9 +290,10 @@ def run_diagnostics(chains, meta, var_names, spec_names):
         ax_trace = axes[row_i, 0]
         ax_acf = axes[row_i, 1]
 
-        # Look up ESS from the full table
+        # Look up ESS and Rhat from the full table
         ess_row = ess_df[ess_df["parameter"] == name]
         mean_ess = ess_row["ESS_mean"].values[0] if len(ess_row) > 0 else 0
+        rhat = ess_row["Rhat"].values[0] if len(ess_row) > 0 else float("nan")
 
         for c_id in range(n_chains):
             vals = extractor(chains[c_id])
@@ -260,7 +319,7 @@ def run_diagnostics(chains, meta, var_names, spec_names):
 
         ax_trace.set_ylabel(label)
         ax_trace.set_xlabel("Iteration (post burn-in)")
-        ax_trace.set_title(f"{label} — trace (mean ESS={mean_ess:.0f})")
+        ax_trace.set_title(f"{label} — trace (ESS={mean_ess:.0f}, $\\hat{{R}}$={rhat:.3f})")
         if row_i == 0:
             ax_trace.legend(fontsize=8, loc="upper right")
 
