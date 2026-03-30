@@ -7,7 +7,7 @@
 
 ## Slide 1: Title Slide (~30s)
 
-Hi everyone. Our project is on Bayesian Hierarchical Logistic Regression for 30-Day Hospital Readmission. Specifically, we're looking at the role of medical specialty among diabetic patients. My name is Selina, and this is my partner Zhouhan.
+Hi everyone. Our project is on Bayesian Hierarchical Logistic Regression for 30-Day Hospital Readmission. Specifically, we're looking at the role of medical specialty among diabetic patients. My name is Xingyu, and this is my partner Zhouhan.
 
 ---
 
@@ -249,7 +249,7 @@ This forest plot shows the posterior means and 95 percent credible intervals for
 
 It's important to interpret these correctly: each u_j represents the deviation from the population-average log-odds. It's not a causal effect — it's the residual specialty-level variation after adjusting for all 43 patient-level covariates.
 
-Physical Medicine and Rehabilitation has the highest random effect, around plus 0.5 on the logit scale. This means that, even after controlling for patient characteristics, patients admitted under this specialty have notably higher readmission risk. On the other end, Pediatrics and Obstetrics/Gynecology show negative random effects — lower risk, around minus 0.5 to minus 1.0.
+Physical Medicine and Rehabilitation has the highest random effect, at plus 1.32 on the logit scale — the only specialty whose 95 percent credible interval is entirely above zero. This means that, even after controlling for patient characteristics, patients admitted under this specialty have notably higher readmission risk. On the other end, Surgery-Cardiovascular/Thoracic shows a significantly negative effect at minus 0.58, and Obstetrics/Gynecology also has a negative random intercept.
 
 Notice the shrinkage effect. Specialties with smaller sample sizes have wider credible intervals and their point estimates are pulled closer to zero — closer to the population mean. This is partial pooling in action. The model doesn't naively trust the noisy raw rates from small groups; instead, it borrows information from the larger groups through the hierarchical structure.
 
