@@ -2,6 +2,7 @@
 """
 01_clean_data.py
 ================
+<<<<<<< HEAD
 Data cleaning, specialty regrouping, and feature engineering for
 Bayesian Hierarchical Logistic Regression on 30-Day Hospital Readmission.
 
@@ -9,12 +10,20 @@ Covers Pipeline Tasks 2-4:
   Task 2: Data cleaning & cohort definition
   Task 3: Specialty regrouping
   Task 4: Variable construction (design matrix)
+=======
+Data cleaning and cohort definition for
+Bayesian Hierarchical Logistic Regression on 30-Day Hospital Readmission.
+
+Covers Pipeline Task 2:
+  Task 2: Data cleaning & cohort definition
+>>>>>>> origin/main
 
 Input:
   - data_raw/diabetic_data.csv       (UCI Diabetes 130-US hospitals)
   - data_raw/IDS_mapping.csv         (ID mapping file)
 
 Output (all written to data_processed/):
+<<<<<<< HEAD
   - analytic_cohort.csv              Final analytic cohort
   - X_matrix.csv                     Standardised design matrix
   - y_vector.csv                     Binary outcome vector
@@ -23,6 +32,10 @@ Output (all written to data_processed/):
   - data_dictionary.csv              Variable dictionary
   - cleaning_log.txt                 Cleaning audit trail
   - X_matrix.npy / y_vector.npy / group_index.npy   (numpy arrays for sampler)
+=======
+  - cleaned_intermediate.csv         Cleaned cohort before feature engineering
+  - cleaning_log.txt                 Cleaning audit trail
+>>>>>>> origin/main
 
 Usage on Duke DCC:
   cd /work/zq63/Bayes/Joint-Bayesian
@@ -152,6 +165,7 @@ log("")
 
 
 # =============================================================================
+<<<<<<< HEAD
 # TASK 3 -- SPECIALTY REGROUPING
 # =============================================================================
 
@@ -591,12 +605,39 @@ log(f"  Raw specialty readmission rate SD: {rate_sd:.4f}")
 # WRITE CLEANING LOG
 # =============================================================================
 
+=======
+# SAVE INTERMEDIATE OUTPUT
+# =============================================================================
+
+log("=" * 70)
+log("Saving intermediate cleaned cohort")
+log("=" * 70)
+
+df.to_csv(DATA_PROCESSED / "cleaned_intermediate.csv", index=False)
+log(f"  cleaned_intermediate.csv  ->  {len(df)} rows x {df.shape[1]} cols")
+
+# Summary
+log("")
+log("=" * 70)
+log("SUMMARY -- Task 2")
+log("=" * 70)
+log(f"  [N_raw]       = {N_raw}")
+log(f"  [N_clean]     = {N_clean}")
+log(f"  [P_raw]       = {P_raw}")
+log(f"  [X%] overall readmission rate = {readmit_rate*100:.2f}%")
+log(f"  Random seed   = {RANDOM_SEED}")
+
+# Write cleaning log
+>>>>>>> origin/main
 log_path = DATA_PROCESSED / "cleaning_log.txt"
 with open(log_path, "w") as f:
     f.write("\n".join(log_lines))
 
 print(f"\n{'='*70}")
 print(f"DONE. Cleaning log saved to {log_path}")
+<<<<<<< HEAD
 print(f"All outputs written to {DATA_PROCESSED}/")
+=======
+>>>>>>> origin/main
 print(f"01_clean_data.py completed successfully.")
 print(f"{'='*70}")

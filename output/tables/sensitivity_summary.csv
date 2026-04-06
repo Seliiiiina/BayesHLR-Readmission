@@ -1,0 +1,5 @@
+config,label,tau_mean,tau_sd,tau_ci,alpha_mean,alpha_sd
+baseline,Baseline,0.4371,0.0898,"[0.2977, 0.6443]",-2.5343,0.1465
+A1_sbeta5,$s_\beta = 5$,0.4366,0.0872,"[0.2971, 0.6330]",-2.5415,0.139
+B1_stau2.5_hn,$s_\tau = 2.5$ (Half-Normal),0.4414,0.0889,"[0.2969, 0.6458]",-2.5366,0.1513
+B2_stau2.5_hc,$s_\tau = 2.5$ (Half-Cauchy),0.4396,0.0867,"[0.3023, 0.6372]",-2.5316,0.1433

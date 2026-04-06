@@ -1,0 +1,56 @@
+\contentsline {section}{\numberline {1}Notation}{3}{section.1}%
+\contentsline {section}{\numberline {2}Model Specification}{3}{section.2}%
+\contentsline {subsection}{\numberline {2.1}Likelihood (Data Model)}{3}{subsection.2.1}%
+\contentsline {subsection}{\numberline {2.2}Prior Distributions}{3}{subsection.2.2}%
+\contentsline {paragraph}{Intercept.}{3}{section*.2}%
+\contentsline {paragraph}{Fixed effects.}{3}{section*.3}%
+\contentsline {paragraph}{Random intercepts (conditional on $\tau $).}{4}{section*.4}%
+\contentsline {paragraph}{Between-group scale (hyperprior).}{4}{section*.5}%
+\contentsline {subsection}{\numberline {2.3}Assumptions}{4}{subsection.2.3}%
+\contentsline {subsection}{\numberline {2.4}Hyperparameters}{4}{subsection.2.4}%
+\contentsline {section}{\numberline {3}Joint Distribution and Log-Posterior}{4}{section.3}%
+\contentsline {subsection}{\numberline {3.1}Joint Distribution}{4}{subsection.3.1}%
+\contentsline {subsection}{\numberline {3.2}Posterior Distribution (Up to Proportionality)}{5}{subsection.3.2}%
+\contentsline {subsection}{\numberline {3.3}Log-Posterior}{5}{subsection.3.3}%
+\contentsline {section}{\numberline {4}Metropolis-within-Gibbs Sampling Strategy}{5}{section.4}%
+\contentsline {subsection}{\numberline {4.1}General Metropolis--Hastings Framework}{5}{subsection.4.1}%
+\contentsline {subsection}{\numberline {4.2}Block 1: Update $\alpha $ (Intercept)}{5}{subsection.4.2}%
+\contentsline {paragraph}{Full conditional.}{5}{section*.6}%
+\contentsline {paragraph}{Proposal and acceptance.}{6}{section*.7}%
+\contentsline {paragraph}{Computational note.}{6}{section*.8}%
+\contentsline {subsection}{\numberline {4.3}Block 2: Update $\beta _k$ (Fixed Effects, Component-wise)}{6}{subsection.4.3}%
+\contentsline {paragraph}{Full conditional for $\beta _k$.}{6}{section*.9}%
+\contentsline {paragraph}{Proposal and acceptance.}{6}{section*.10}%
+\contentsline {paragraph}{Computational note.}{6}{section*.11}%
+\contentsline {subsection}{\numberline {4.4}Block 3: Update $u_j$ (Random Intercepts, Component-wise)}{6}{subsection.4.4}%
+\contentsline {paragraph}{Full conditional for $u_j$.}{6}{section*.12}%
+\contentsline {paragraph}{Proposal and acceptance.}{6}{section*.13}%
+\contentsline {paragraph}{Computational advantage.}{6}{section*.14}%
+\contentsline {subsection}{\numberline {4.5}Block 4: Update $\tau $ via $\phi = \log \tau $}{6}{subsection.4.5}%
+\contentsline {paragraph}{Change of variable.}{7}{section*.15}%
+\contentsline {paragraph}{Full conditional for $\phi = \log \tau $.}{7}{section*.16}%
+\contentsline {paragraph}{Proposal and acceptance.}{7}{section*.17}%
+\contentsline {paragraph}{Sensitivity variant: Half-Cauchy.}{7}{section*.18}%
+\contentsline {subsection}{\numberline {4.6}Block 5: Joint Translation Move}{7}{subsection.4.6}%
+\contentsline {paragraph}{Motivation.}{7}{section*.19}%
+\contentsline {paragraph}{Proposal.}{7}{section*.20}%
+\contentsline {paragraph}{Cost.}{7}{section*.21}%
+\contentsline {subsection}{\numberline {4.7}Full Iteration Summary}{7}{subsection.4.7}%
+\contentsline {section}{\numberline {5}Posterior Propriety}{8}{section.5}%
+\contentsline {section}{\numberline {6}Identifiability}{8}{section.6}%
+\contentsline {paragraph}{Weak non-identifiability of $\alpha $ and $\bm {u}$.}{8}{section*.22}%
+\contentsline {paragraph}{Fixed effects.}{9}{section*.23}%
+\contentsline {section}{\numberline {7}Likelihood-Driven vs.\ Prior-Driven Behavior}{9}{section.7}%
+\contentsline {paragraph}{Fixed effects $\bm {\beta }$.}{9}{section*.24}%
+\contentsline {paragraph}{Random intercepts $u_j$.}{9}{section*.25}%
+\contentsline {paragraph}{Between-group scale $\tau $.}{9}{section*.26}%
+\contentsline {section}{\numberline {8}MCMC Implementation Details}{9}{section.8}%
+\contentsline {subsection}{\numberline {8.1}Proposal Tuning}{9}{subsection.8.1}%
+\contentsline {subsection}{\numberline {8.2}Chain Configuration}{9}{subsection.8.2}%
+\contentsline {subsection}{\numberline {8.3}Convergence Assessment}{9}{subsection.8.3}%
+\contentsline {paragraph}{Effective sample size (ESS).}{10}{section*.27}%
+\contentsline {paragraph}{Split-$\hat {R}$ (Gelman \& Rubin, 1992).}{10}{section*.28}%
+\contentsline {subsection}{\numberline {8.4}Why Metropolis-within-Gibbs?}{10}{subsection.8.4}%
+\contentsline {section}{\numberline {9}Deviance Information Criterion (DIC)}{10}{section.9}%
+\contentsline {section}{\numberline {10}Sensitivity Analysis}{10}{section.10}%
+\contentsline {section}{\numberline {11}Posterior Predictive Checks}{11}{section.11}%

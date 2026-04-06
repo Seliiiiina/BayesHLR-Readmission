@@ -1,3 +1,8 @@
 *.Rhistory
 *.RData
 .DS_Store
+<<<<<<< HEAD
+=======
+cache/
+__pycache__/
+>>>>>>> origin/main

@@ -129,14 +129,61 @@ def compute_ess_single(x):
     return max(1.0, ess)
 
 
+<<<<<<< HEAD
 def run_diagnostics(chains, meta, var_names, spec_names):
     """Task 11: Trace plots, ACF, ESS, acceptance rates."""
+=======
+def compute_split_rhat(chain_samples):
+    """
+    Split R-hat (Gelman-Rubin) diagnostic for a single parameter.
+
+    Parameters
+    ----------
+    chain_samples : list of 1-D arrays
+        One array per chain (post burn-in samples).
+
+    Returns
+    -------
+    rhat : float
+        Split R-hat.  Values close to 1.0 indicate convergence;
+        the standard threshold is Rhat < 1.05 (or stricter, < 1.01).
+    """
+    # Split each chain in half → 2m half-chains
+    halves = []
+    for ch in chain_samples:
+        mid = len(ch) // 2
+        halves.append(ch[:mid])
+        halves.append(ch[mid:2 * mid])   # equal lengths
+
+    m = len(halves)
+    n = len(halves[0])
+
+    chain_means = np.array([h.mean() for h in halves])
+    grand_mean = chain_means.mean()
+
+    # Between-chain variance B
+    B = n / (m - 1) * np.sum((chain_means - grand_mean) ** 2)
+
+    # Within-chain variance W
+    W = np.mean([np.var(h, ddof=1) for h in halves])
+
+    # Pooled posterior variance estimate
+    var_hat = (n - 1) / n * W + B / n
+
+    rhat = np.sqrt(var_hat / W) if W > 0 else float("nan")
+    return rhat
+
+
+def run_diagnostics(chains, meta, var_names, spec_names):
+    """Task 11: Trace plots, ACF, ESS for ALL parameters, acceptance rates."""
+>>>>>>> origin/main
     print("\n" + "=" * 60)
     print("TASK 11: MCMC Diagnostics")
     print("=" * 60)
 
     n_chains = len(chains)
     n_samples = chains[0]["alpha"].shape[0]
+<<<<<<< HEAD
 
     # --- Select representative parameters for diagnostics ---
     # alpha, 3 key betas (first, a mid-range, last), tau, 3 representative u_j
@@ -146,6 +193,99 @@ def run_diagnostics(chains, meta, var_names, spec_names):
     u_idx = [0, J // 2, J - 1]
 
     param_specs = (
+=======
+    K = chains[0]["beta"].shape[1]
+    J = chains[0]["u"].shape[1]
+
+    # =================================================================
+    # A. Compute ESS and split-Rhat for ALL parameters
+    # =================================================================
+    all_diag_records = []
+
+    # alpha
+    ess_vals = [compute_ess_single(c["alpha"]) for c in chains]
+    rhat_val = compute_split_rhat([c["alpha"] for c in chains])
+    all_diag_records.append({
+        "parameter": "alpha", "label": r"$\alpha$",
+        **{f"ESS_chain_{i}": ess_vals[i] for i in range(n_chains)},
+        "ESS_mean": np.mean(ess_vals),
+        "Rhat": rhat_val,
+    })
+
+    # all betas
+    for k in range(K):
+        vname = var_names[k] if k < len(var_names) else f"beta_{k}"
+        ess_vals = [compute_ess_single(c["beta"][:, k]) for c in chains]
+        rhat_val = compute_split_rhat([c["beta"][:, k] for c in chains])
+        all_diag_records.append({
+            "parameter": f"beta_{k}", "label": f"$\\beta_{{{k}}}$ ({vname})",
+            **{f"ESS_chain_{i}": ess_vals[i] for i in range(n_chains)},
+            "ESS_mean": np.mean(ess_vals),
+            "Rhat": rhat_val,
+        })
+
+    # tau
+    ess_vals = [compute_ess_single(c["tau"]) for c in chains]
+    rhat_val = compute_split_rhat([c["tau"] for c in chains])
+    all_diag_records.append({
+        "parameter": "tau", "label": r"$\tau$",
+        **{f"ESS_chain_{i}": ess_vals[i] for i in range(n_chains)},
+        "ESS_mean": np.mean(ess_vals),
+        "Rhat": rhat_val,
+    })
+
+    # all u's
+    for j in range(J):
+        sname = spec_names[j] if j < len(spec_names) else f"u_{j}"
+        ess_vals = [compute_ess_single(c["u"][:, j]) for c in chains]
+        rhat_val = compute_split_rhat([c["u"][:, j] for c in chains])
+        all_diag_records.append({
+            "parameter": f"u_{j}", "label": f"$u_{{{j}}}$ ({sname})",
+            **{f"ESS_chain_{i}": ess_vals[i] for i in range(n_chains)},
+            "ESS_mean": np.mean(ess_vals),
+            "Rhat": rhat_val,
+        })
+
+    ess_df = pd.DataFrame(all_diag_records)
+    ess_df.to_csv(TAB_DIR / "diagnostics_summary.csv", index=False)
+    print(f"  Saved diagnostics_summary.csv ({len(ess_df)} parameters)")
+
+    # --- Print full ESS + Rhat summary ---
+    print(f"\n  Convergence Summary (all {len(ess_df)} parameters):")
+    print(f"  {'Parameter':>40s}  {'ESS_mean':>8s}  {'Min ESS':>8s}  {'Rhat':>6s}")
+    print(f"  {'-'*40}  {'-'*8}  {'-'*8}  {'-'*6}")
+    ess_chain_cols = [f"ESS_chain_{i}" for i in range(n_chains)]
+    for _, row in ess_df.iterrows():
+        min_ess = min(row[c] for c in ess_chain_cols)
+        rhat_flag = " ***" if row["Rhat"] > 1.05 else ""
+        ess_flag = " ***" if row["ESS_mean"] < 100 else ""
+        print(f"  {row['parameter']:>40s}  {row['ESS_mean']:>8.0f}{ess_flag}  "
+              f"{min_ess:>8.0f}  {row['Rhat']:>6.4f}{rhat_flag}")
+
+    # --- Flag problematic parameters ---
+    low_ess = ess_df[ess_df["ESS_mean"] < 100].copy()
+    high_rhat = ess_df[ess_df["Rhat"] > 1.05].copy()
+    if len(low_ess) > 0:
+        print(f"\n  *** WARNING: {len(low_ess)} parameter(s) with mean ESS < 100:")
+        for _, row in low_ess.iterrows():
+            print(f"      {row['parameter']:>40s}: ESS = {row['ESS_mean']:.0f}")
+    else:
+        print(f"\n  All parameters have mean ESS >= 100.")
+    if len(high_rhat) > 0:
+        print(f"\n  *** WARNING: {len(high_rhat)} parameter(s) with Rhat > 1.05:")
+        for _, row in high_rhat.iterrows():
+            print(f"      {row['parameter']:>40s}: Rhat = {row['Rhat']:.4f}")
+    else:
+        print(f"  All parameters have split-Rhat < 1.05 (convergence criterion met).")
+
+    # =================================================================
+    # B. Trace plots for representative parameters
+    # =================================================================
+    beta_idx = [0, K // 2, K - 1]
+    u_idx = [0, J // 2, J - 1]
+
+    plot_specs = (
+>>>>>>> origin/main
         [("alpha", lambda c: c["alpha"], r"$\alpha$")]
         + [(f"beta_{i}", lambda c, i=i: c["beta"][:, i],
             f"$\\beta_{{{i}}}$ ({var_names[i][:20]})")
@@ -156,13 +296,18 @@ def run_diagnostics(chains, meta, var_names, spec_names):
            for j in u_idx]
     )
 
+<<<<<<< HEAD
     # --- Figure 2: Trace plots ---
     n_params = len(param_specs)
+=======
+    n_params = len(plot_specs)
+>>>>>>> origin/main
     fig, axes = plt.subplots(n_params, 2, figsize=(12, 2.5 * n_params))
     if n_params == 1:
         axes = axes.reshape(1, -1)
 
     colors = ["#185FA5", "#D85A30", "#0F6E56", "#993556"]
+<<<<<<< HEAD
     ess_records = []
 
     for row, (name, extractor, label) in enumerate(param_specs):
@@ -170,12 +315,27 @@ def run_diagnostics(chains, meta, var_names, spec_names):
         ax_acf = axes[row, 1]
 
         all_ess = []
+=======
+
+    for row_i, (name, extractor, label) in enumerate(plot_specs):
+        ax_trace = axes[row_i, 0]
+        ax_acf = axes[row_i, 1]
+
+        # Look up ESS and Rhat from the full table
+        ess_row = ess_df[ess_df["parameter"] == name]
+        mean_ess = ess_row["ESS_mean"].values[0] if len(ess_row) > 0 else 0
+        rhat = ess_row["Rhat"].values[0] if len(ess_row) > 0 else float("nan")
+
+>>>>>>> origin/main
         for c_id in range(n_chains):
             vals = extractor(chains[c_id])
             ax_trace.plot(vals, alpha=0.6, linewidth=0.4, color=colors[c_id],
                           label=f"Chain {c_id}")
+<<<<<<< HEAD
             ess = compute_ess_single(vals)
             all_ess.append(ess)
+=======
+>>>>>>> origin/main
 
             # ACF for chain 0 only
             if c_id == 0:
@@ -196,6 +356,7 @@ def run_diagnostics(chains, meta, var_names, spec_names):
 
         ax_trace.set_ylabel(label)
         ax_trace.set_xlabel("Iteration (post burn-in)")
+<<<<<<< HEAD
         mean_ess = np.mean(all_ess)
         ax_trace.set_title(f"{label} — trace (mean ESS={mean_ess:.0f})")
         if row == 0:
@@ -207,11 +368,18 @@ def run_diagnostics(chains, meta, var_names, spec_names):
             "ESS_mean": mean_ess,
         })
 
+=======
+        ax_trace.set_title(f"{label} — trace (ESS={mean_ess:.0f}, $\\hat{{R}}$={rhat:.3f})")
+        if row_i == 0:
+            ax_trace.legend(fontsize=8, loc="upper right")
+
+>>>>>>> origin/main
     fig.tight_layout()
     fig.savefig(FIG_DIR / "fig2_trace_plots.png")
     plt.close(fig)
     print(f"  Saved fig2_trace_plots.png")
 
+<<<<<<< HEAD
     # --- ESS summary table ---
     ess_df = pd.DataFrame(ess_records)
     ess_df.to_csv(TAB_DIR / "diagnostics_summary.csv", index=False)
@@ -220,15 +388,26 @@ def run_diagnostics(chains, meta, var_names, spec_names):
     for _, row in ess_df.iterrows():
         print(f"    {row['parameter']:>12s}: ESS = {row['ESS_mean']:.0f}")
 
+=======
+>>>>>>> origin/main
     # --- Load acceptance rates from diagnostics JSON ---
     print("\n  Acceptance Rates (from chain diagnostics):")
     for c_id in range(n_chains):
         with open(CHAIN_DIR / f"chain_{c_id}_diagnostics.json") as f:
             diag = json.load(f)
+<<<<<<< HEAD
         print(f"    Chain {c_id}: alpha={diag['accept_rate_alpha']:.3f}, "
               f"beta={diag['accept_rate_beta_mean']:.3f}, "
               f"u={diag['accept_rate_u_mean']:.3f}, "
               f"tau={diag['accept_rate_log_tau']:.3f}")
+=======
+        blk_str = (f", blk={diag['accept_rate_block']:.3f}"
+                   if 'accept_rate_block' in diag else "")
+        print(f"    Chain {c_id}: alpha={diag['accept_rate_alpha']:.3f}, "
+              f"beta={diag['accept_rate_beta_mean']:.3f}, "
+              f"u={diag['accept_rate_u_mean']:.3f}, "
+              f"tau={diag['accept_rate_log_tau']:.3f}{blk_str}")
+>>>>>>> origin/main
 
     return ess_df
 
@@ -362,6 +541,59 @@ def run_inference(chains, meta, var_names, spec_names):
 
 
 # =============================================================================
+<<<<<<< HEAD
+=======
+# TASK 12b: DIC (Deviance Information Criterion)
+# =============================================================================
+
+def compute_dic(chains, X, y, group_idx):
+    """
+    Compute DIC for the Bayesian hierarchical model.
+
+    DIC  = D_bar + pD
+    where
+      D(theta)      = -2 * log L(y | theta)
+      D_bar         = E_posterior[ D(theta) ]        (posterior mean deviance)
+      D(theta_bar)  = D evaluated at posterior means  (deviance at point estimate)
+      pD            = D_bar - D(theta_bar)            (effective number of parameters)
+      DIC           = D_bar + pD  =  2 * D_bar - D(theta_bar)
+    """
+    alpha_all = np.concatenate([c["alpha"] for c in chains])
+    beta_all = np.vstack([c["beta"] for c in chains])
+    u_all = np.vstack([c["u"] for c in chains])
+    n_posterior = len(alpha_all)
+
+    # 1. D_bar: posterior mean of the deviance  ---------------------------------
+    deviances = np.zeros(n_posterior)
+    for s in range(n_posterior):
+        eta_s = alpha_all[s] + X @ beta_all[s] + u_all[s][group_idx]
+        ll_s = np.sum(y * eta_s - np.logaddexp(0.0, eta_s))
+        deviances[s] = -2.0 * ll_s
+
+    D_bar = deviances.mean()
+
+    # 2. D(theta_bar): deviance at posterior mean  ------------------------------
+    alpha_hat = alpha_all.mean()
+    beta_hat = beta_all.mean(axis=0)
+    u_hat = u_all.mean(axis=0)
+    eta_hat = alpha_hat + X @ beta_hat + u_hat[group_idx]
+    ll_hat = np.sum(y * eta_hat - np.logaddexp(0.0, eta_hat))
+    D_theta_bar = -2.0 * ll_hat
+
+    # 3. pD and DIC  -----------------------------------------------------------
+    pD = D_bar - D_theta_bar
+    DIC = D_bar + pD   # equivalently  2 * D_bar - D_theta_bar
+
+    return {
+        "D_bar": D_bar,
+        "D_theta_bar": D_theta_bar,
+        "pD": pD,
+        "DIC": DIC,
+    }
+
+
+# =============================================================================
+>>>>>>> origin/main
 # TASK 13: MODEL COMPARISON
 # =============================================================================
 
@@ -432,7 +664,23 @@ def run_model_comparison(chains, X, y, group_idx):
     table3.to_csv(TAB_DIR / "table3_model_comparison.csv", index=False)
     print(f"\n  Saved table3_model_comparison.csv")
 
+<<<<<<< HEAD
     return table3
+=======
+    # --- DIC for the Bayesian hierarchical model ---
+    print("\n  Computing DIC ...")
+    dic_results = compute_dic(chains, X, y, group_idx)
+    print(f"    D_bar (posterior mean deviance) = {dic_results['D_bar']:.2f}")
+    print(f"    D(theta_bar) (deviance at post. mean) = {dic_results['D_theta_bar']:.2f}")
+    print(f"    pD (effective no. parameters)   = {dic_results['pD']:.2f}")
+    print(f"    DIC                             = {dic_results['DIC']:.2f}")
+
+    dic_df = pd.DataFrame([dic_results])
+    dic_df.to_csv(TAB_DIR / "table4_dic.csv", index=False)
+    print(f"  Saved table4_dic.csv")
+
+    return table3, dic_results
+>>>>>>> origin/main
 
 
 # =============================================================================
@@ -544,7 +792,12 @@ def run_ppc(chains, X, y, group_idx, spec_names):
 # =============================================================================
 
 def print_manuscript_summary(table2, tau_all, ppc_results, table3,
+<<<<<<< HEAD
                               u_means, u_lower, u_upper, spec_names, y):
+=======
+                              u_means, u_lower, u_upper, spec_names, y,
+                              dic_results=None):
+>>>>>>> origin/main
     """Print all placeholder values for direct manuscript insertion."""
     print("\n" + "=" * 60)
     print("MANUSCRIPT PLACEHOLDER VALUES")
@@ -607,6 +860,15 @@ def print_manuscript_summary(table2, tau_all, ppc_results, table3,
     print(f"  Hierarchical AUC = {hier_row['AUC']}")
     print(f"  Baseline AUC     = {base_row['AUC']}")
 
+<<<<<<< HEAD
+=======
+    if dic_results is not None:
+        print(f"\n  DIC = {dic_results['DIC']:.2f}")
+        print(f"  pD (effective parameters) = {dic_results['pD']:.2f}")
+        print(f"  D_bar = {dic_results['D_bar']:.2f}")
+        print(f"  D(theta_bar) = {dic_results['D_theta_bar']:.2f}")
+
+>>>>>>> origin/main
 
 # =============================================================================
 # MAIN
@@ -625,15 +887,25 @@ if __name__ == "__main__":
     table2, tau_all, u_means, u_lower, u_upper = run_inference(
         chains, meta, var_names, spec_names)
 
+<<<<<<< HEAD
     # Task 13
     table3 = run_model_comparison(chains, X, y, group_idx)
+=======
+    # Task 13 (includes DIC)
+    table3, dic_results = run_model_comparison(chains, X, y, group_idx)
+>>>>>>> origin/main
 
     # Task 14
     ppc_results = run_ppc(chains, X, y, group_idx, spec_names)
 
     # Summary for manuscript
     print_manuscript_summary(table2, tau_all, ppc_results, table3,
+<<<<<<< HEAD
                               u_means, u_lower, u_upper, spec_names, y)
+=======
+                              u_means, u_lower, u_upper, spec_names, y,
+                              dic_results=dic_results)
+>>>>>>> origin/main
 
     print("\n" + "=" * 60)
     print("All post-MCMC analyses complete.")

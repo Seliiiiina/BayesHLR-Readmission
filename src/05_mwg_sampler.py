@@ -93,8 +93,13 @@ MCMC_SETTINGS = {
         "n_subsample": 2000,
     },
     "full": {
+<<<<<<< HEAD
         "n_iter": 20000,
         "burnin": 5000,
+=======
+        "n_iter": 30000,
+        "burnin": 8000,
+>>>>>>> origin/main
         "thin": 5,
         "n_chains": 4,
         "n_subsample": None,  # Use all data
@@ -268,6 +273,48 @@ def update_u_j(j, u, eta, y, group_obs_j, tau, prop_sd, rng):
         return eta, False
 
 
+<<<<<<< HEAD
+=======
+def update_alpha_u_block(alpha, u, sigma_alpha, tau, prop_sd, J, rng):
+    """
+    Block 5: Joint translation move for alpha and u.
+
+    Propose delta ~ N(0, prop_sd^2), then:
+      alpha* = alpha + delta
+      u_j*   = u_j - delta   for all j
+
+    Since eta_i = alpha + x_i'beta + u_{j[i]}, the +delta and -delta
+    cancel exactly, leaving eta unchanged.  Therefore the likelihood
+    cancels in the acceptance ratio and only priors matter:
+
+      log R = log p(alpha*) + log p(u*|tau) - log p(alpha) - log p(u|tau)
+
+    This move is O(J) — no likelihood evaluation — so we can run it
+    multiple times per iteration to dramatically improve alpha-u mixing.
+    """
+    delta = rng.randn() * prop_sd
+
+    alpha_star = alpha + delta
+    u_star = u - delta   # broadcast: scalar subtracted from length-J array
+
+    # Log-prior ratio (likelihood cancels)
+    lp_current = (-0.5 * alpha**2 / sigma_alpha**2
+                  - 0.5 * np.sum(u**2) / tau**2)
+    lp_proposed = (-0.5 * alpha_star**2 / sigma_alpha**2
+                   - 0.5 * np.sum(u_star**2) / tau**2)
+
+    log_ratio = lp_proposed - lp_current
+    if np.log(rng.rand()) < log_ratio:
+        return alpha_star, u_star, True
+    else:
+        return alpha, u, False
+
+
+# Number of block translation moves per iteration (cheap, so repeat)
+N_BLOCK_REPEATS = 10
+
+
+>>>>>>> origin/main
 def update_log_tau(u, log_tau, s_tau, prior_family, prop_sd, rng):
     """
     Block 4: Update log(tau).  Derivation Notes Section 4.5.
@@ -348,11 +395,33 @@ def run_mwg(X, y, group_idx, N, K, J,
     s_tau = hyperparams["s_tau"]
     prior_family = hyperparams["prior_family"]
 
+<<<<<<< HEAD
     # --- Unpack proposal SDs ---
     prop_alpha = proposal_sd["alpha"]
     prop_beta = proposal_sd["beta"]
     prop_u = proposal_sd["u"]
     prop_log_tau = proposal_sd["log_tau"]
+=======
+    # --- Unpack proposal SDs (support per-coordinate arrays) ---
+    prop_alpha = float(proposal_sd["alpha"])
+
+    _pb = proposal_sd["beta"]
+    if isinstance(_pb, (int, float)):
+        prop_beta = np.full(K, float(_pb))
+    else:
+        prop_beta = np.asarray(_pb, dtype=np.float64)
+
+    _pu = proposal_sd["u"]
+    if isinstance(_pu, (int, float)):
+        prop_u = np.full(J, float(_pu))
+    else:
+        prop_u = np.asarray(_pu, dtype=np.float64)
+
+    prop_log_tau = float(proposal_sd["log_tau"])
+
+    # Block translation proposal SD (alpha-u joint move)
+    prop_block = float(proposal_sd.get("block", prop_alpha))
+>>>>>>> origin/main
 
     # --- Precompute group membership ---
     group_obs = precompute_group_obs(group_idx, J)
@@ -389,11 +458,19 @@ def run_mwg(X, y, group_idx, N, K, J,
     accept_beta = np.zeros(K, dtype=int)
     accept_u = np.zeros(J, dtype=int)
     accept_log_tau = 0
+<<<<<<< HEAD
+=======
+    accept_block = 0
+>>>>>>> origin/main
 
     total_alpha = 0
     total_beta = np.zeros(K, dtype=int)
     total_u = np.zeros(J, dtype=int)
     total_log_tau = 0
+<<<<<<< HEAD
+=======
+    total_block = 0
+>>>>>>> origin/main
 
     save_idx = 0
     t_start = time.time()
@@ -410,14 +487,22 @@ def run_mwg(X, y, group_idx, N, K, J,
         # --- Block 2: Update beta, component-wise (Section 4.3) ---
         for k in range(K):
             eta, accepted = update_beta_k(
+<<<<<<< HEAD
                 k, beta, eta, y, X, s_beta, prop_beta, rng)
+=======
+                k, beta, eta, y, X, s_beta, prop_beta[k], rng)
+>>>>>>> origin/main
             total_beta[k] += 1
             accept_beta[k] += int(accepted)
 
         # --- Block 3: Update u, component-wise (Section 4.4) ---
         for j in range(J):
             eta, accepted = update_u_j(
+<<<<<<< HEAD
                 j, u, eta, y, group_obs[j], tau, prop_u, rng)
+=======
+                j, u, eta, y, group_obs[j], tau, prop_u[j], rng)
+>>>>>>> origin/main
             total_u[j] += 1
             accept_u[j] += int(accepted)
 
@@ -427,6 +512,21 @@ def run_mwg(X, y, group_idx, N, K, J,
         total_log_tau += 1
         accept_log_tau += int(accepted)
 
+<<<<<<< HEAD
+=======
+        # --- Block 5: Alpha-u translation move (repeated) ---
+        for _ in range(N_BLOCK_REPEATS):
+            alpha_new, u_new, accepted = update_alpha_u_block(
+                alpha, u, sigma_alpha, tau, prop_block, J, rng)
+            total_block += 1
+            accept_block += int(accepted)
+            if accepted:
+                alpha = alpha_new
+                u = u_new
+                # Recompute eta with new alpha and u
+                eta = compute_eta(alpha, beta, u, X, group_idx)
+
+>>>>>>> origin/main
         # --- Save sample (post-burn-in, thinned) ---
         if t >= burnin and (t - burnin) % thin == 0 and save_idx < n_saved:
             samples["alpha"][save_idx] = alpha
@@ -449,9 +549,16 @@ def run_mwg(X, y, group_idx, N, K, J,
                            if total_beta.sum() else 0)
             ar_u_mean = (accept_u.sum() / total_u.sum()
                          if total_u.sum() else 0)
+<<<<<<< HEAD
             print(f"  Chain {chain_id} | iter {t+1:>6d}/{n_iter} | "
                   f"AR: alpha={ar_alpha:.3f} beta={ar_beta_mean:.3f} "
                   f"u={ar_u_mean:.3f} tau={ar_tau:.3f} | "
+=======
+            ar_block = accept_block / total_block if total_block else 0
+            print(f"  Chain {chain_id} | iter {t+1:>6d}/{n_iter} | "
+                  f"AR: alpha={ar_alpha:.3f} beta={ar_beta_mean:.3f} "
+                  f"u={ar_u_mean:.3f} tau={ar_tau:.3f} blk={ar_block:.3f} | "
+>>>>>>> origin/main
                   f"tau={tau:.4f} | "
                   f"{rate:.1f} it/s | ETA {eta_sec:.0f}s")
 
@@ -471,8 +578,20 @@ def run_mwg(X, y, group_idx, N, K, J,
         "accept_rate_u_mean": float(accept_u.sum() / total_u.sum()),
         "accept_rate_u_per_j": (accept_u / total_u).tolist(),
         "accept_rate_log_tau": accept_log_tau / total_log_tau,
+<<<<<<< HEAD
         "hyperparams": hyperparams,
         "proposal_sd": proposal_sd,
+=======
+        "accept_rate_block": accept_block / total_block if total_block else 0,
+        "hyperparams": hyperparams,
+        "proposal_sd": {
+            "alpha": prop_alpha,
+            "beta": prop_beta.tolist(),
+            "u": prop_u.tolist(),
+            "log_tau": prop_log_tau,
+            "block": prop_block,
+        },
+>>>>>>> origin/main
         "seed": seed + chain_id * 1000,
     }
 
@@ -484,6 +603,11 @@ def run_mwg(X, y, group_idx, N, K, J,
         print(f"    beta:    {diagnostics['accept_rate_beta_mean']:.4f} (mean)")
         print(f"    u:       {diagnostics['accept_rate_u_mean']:.4f} (mean)")
         print(f"    log_tau: {diagnostics['accept_rate_log_tau']:.4f}")
+<<<<<<< HEAD
+=======
+        print(f"    block:   {diagnostics['accept_rate_block']:.4f} "
+              f"({N_BLOCK_REPEATS} repeats/iter)")
+>>>>>>> origin/main
 
     return samples, diagnostics
 
@@ -540,7 +664,15 @@ def run_multi_chain(X, y, group_idx, N, K, J,
             "thin": thin,
             "N": N, "K": K, "J": J,
             "hyperparams": hyperparams,
+<<<<<<< HEAD
             "proposal_sd": proposal_sd,
+=======
+            "proposal_sd": {
+                k: (v.tolist() if isinstance(v, np.ndarray) else
+                    float(v) if isinstance(v, (int, float)) else v)
+                for k, v in proposal_sd.items()
+            },
+>>>>>>> origin/main
             "seed": seed,
         }
         with open(Path(output_dir) / "mcmc_meta.json", "w") as f:
@@ -579,6 +711,11 @@ def main():
     parser.add_argument("--prop-beta", type=float, default=None)
     parser.add_argument("--prop-u", type=float, default=None)
     parser.add_argument("--prop-log-tau", type=float, default=None)
+<<<<<<< HEAD
+=======
+    parser.add_argument("--load-tuning", type=str, default=None,
+                        help="Load proposal SDs from tuning_result.json")
+>>>>>>> origin/main
 
     args = parser.parse_args()
 
@@ -598,7 +735,16 @@ def main():
     if args.prior_family is not None:
         hyperparams["prior_family"] = args.prior_family
 
+<<<<<<< HEAD
     proposal_sd = DEFAULT_PROPOSAL_SD.copy()
+=======
+    if args.load_tuning:
+        with open(args.load_tuning) as f:
+            proposal_sd = json.load(f)["tuned_proposal_sd"]
+        print(f"  Loaded tuned proposal SDs from {args.load_tuning}")
+    else:
+        proposal_sd = DEFAULT_PROPOSAL_SD.copy()
+>>>>>>> origin/main
     if args.prop_alpha is not None:
         proposal_sd["alpha"] = args.prop_alpha
     if args.prop_beta is not None:
@@ -646,7 +792,12 @@ def main():
               f"AR(alpha)={diag['accept_rate_alpha']:.3f}, "
               f"AR(beta)={diag['accept_rate_beta_mean']:.3f}, "
               f"AR(u)={diag['accept_rate_u_mean']:.3f}, "
+<<<<<<< HEAD
               f"AR(tau)={diag['accept_rate_log_tau']:.3f}")
+=======
+              f"AR(tau)={diag['accept_rate_log_tau']:.3f}, "
+              f"AR(blk)={diag['accept_rate_block']:.3f}")
+>>>>>>> origin/main
 
     # Quick posterior summary from last chain
     s = all_samples[-1]
