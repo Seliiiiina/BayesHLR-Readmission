@@ -350,7 +350,7 @@ the Jacobian:
 
 \begin{remark}[Why $\tau$ does not depend on the likelihood]
 The likelihood involves $\bu$ but not $\tau$ directly.
-Conditional on $\bu$, the data $\by$ are independent of $\tau$.
+Conditional on $(\alpha,\bbeta,\bu)$, the data $\by$ are independent of $\tau$.
 Data inform $\tau$ only \emph{indirectly} through the posterior draws
 of $\bu$: large spread in the $u_j$'s pulls $\tau$ upward, while
 concentrated $u_j$'s pull $\tau$ toward zero.
@@ -418,8 +418,9 @@ One iteration $t \to t+1$ of the MwG sampler proceeds as:
   \item Repeat $R = 10$ times: joint translation of $(\alpha, \bu)$ (Block~5, Section~\ref{sec:block-joint}).
 \end{enumerate}
 Each sub-step conditions on the \emph{most recently updated} values of
-all other parameters. This defines a valid Gibbs scan whose stationary
-distribution is the posterior~\eqref{eq:posterior}.
+all other parameters. This defines a valid Metropolis-within-Gibbs
+transition kernel whose stationary distribution is the
+posterior~\eqref{eq:posterior}.
 
 % ══════════════════════════════════════════════════════════════════
 \section{Posterior Propriety}
@@ -454,13 +455,14 @@ We verify integrability of each factor:
   \item \textbf{Integrability of the joint.} Since the likelihood is
   bounded above by~1:
   \[
-    \int p(\by \mid \cdot)\,p(\alpha)\,p(\bbeta)\,p(\bu\mid\tau)\,p(\tau)
-    \;d\alpha\,d\bbeta\,d\bu\,d\tau
-    \;\le\;
-    \underbrace{\int p(\alpha)\,d\alpha}_{=1}\;
-    \underbrace{\int p(\bbeta)\,d\bbeta}_{=1}\;
-    \int p(\tau)\underbrace{\int p(\bu\mid\tau)\,d\bu}_{=1}\,d\tau
-    = 1 < \infty.
+    \begin{aligned}
+      &\int p(\by \mid \cdot)\,p(\alpha)\,p(\bbeta)\,p(\bu\mid\tau)\,p(\tau)
+        \,d\alpha\,d\bbeta\,d\bu\,d\tau \\
+      &\le \underbrace{\int p(\alpha)\,d\alpha}_{=1}\;
+        \underbrace{\int p(\bbeta)\,d\bbeta}_{=1}\;
+        \int p(\tau)\underbrace{\int p(\bu\mid\tau)\,d\bu}_{=1}\,d\tau
+        = 1 < \infty.
+    \end{aligned}
   \]
 \end{enumerate}
 Since all priors are proper and the likelihood is bounded, the posterior
@@ -606,8 +608,12 @@ Here $\btheta = (\alpha, \bbeta, \bu)$ collects all parameters entering
 the linear predictor, and $S$ is the number of posterior samples.
 
 $p_D$ is the \textbf{effective number of parameters}. For our model
-with 64 nominal parameters ($1 + 43 + 19 + 1$), the hierarchical prior
-on $\bu$ induces shrinkage, so we expect $p_D < 64$.
+under this conditional deviance, the likelihood-active nominal parameter
+count is 63 ($1 + 43 + 19$). The hyperparameter $\tau$ affects the
+posterior through the hierarchical prior but does not enter
+\eqref{eq:deviance} directly. Accordingly, we interpret $p_D$ relative to
+these 63 likelihood-active parameters; hierarchical shrinkage suggests
+$p_D < 63$.
 
 % ══════════════════════════════════════════════════════════════════
 \section{Sensitivity Analysis}

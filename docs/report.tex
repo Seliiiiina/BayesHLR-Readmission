@@ -29,6 +29,7 @@
 \newcommand{\btheta}{\bm{\theta}}
 \newcommand{\iid}{\overset{\text{iid}}{\sim}}
 \newcommand{\ind}{\overset{\text{ind}}{\sim}}
+\newcommand{\maxfigheight}{0.78\textheight}
 \DeclareMathOperator{\logit}{logit}
 \DeclareMathOperator{\Bernoulli}{Bernoulli}
 \DeclareMathOperator{\Normal}{\mathcal{N}}
@@ -50,17 +51,18 @@
 
 \begin{abstract}
 Hospital readmission within 30 days is a costly and clinically important outcome.
-We investigate whether medical specialty contributes to readmission risk
-after adjusting for patient-level characteristics, using a Bayesian hierarchical
-logistic regression model with specialty-specific random intercepts.
+We investigate whether adjusted 30-day readmission odds exhibit residual
+heterogeneity across medical specialties after accounting for patient-level
+characteristics, using a Bayesian hierarchical logistic regression model with
+specialty-specific random intercepts.
 The model is fitted via a custom Metropolis-within-Gibbs sampler on a cohort
 of 37,964 diabetic patient encounters across 19 specialty groups.
 We find substantive between-specialty heterogeneity ($\hat{\tau} = 0.437$,
 95\% CrI $[0.298, 0.644]$), with Physical Medicine and Rehabilitation showing
-significantly elevated readmission risk.  Key patient-level predictors include
-prior inpatient visits (OR $= 1.22$), comorbid neoplasms (OR $= 1.51$), and
-A1C measurement (OR $= 1.42$).  Prior sensitivity analysis confirms robustness
-of all conclusions.
+significantly elevated adjusted readmission odds.  Key patient-level predictors
+include prior inpatient visits (OR $= 1.22$), comorbid neoplasms
+(OR $= 1.51$), and A1C measurement (OR $= 1.42$).  Prior sensitivity analysis
+confirms robustness of all conclusions.
 \end{abstract}
 
 % ══════════════════════════════════════════════════════════════════
@@ -83,9 +85,9 @@ covariates, or practice style.  Ignoring this clustering can lead to biased
 standard errors and missed opportunities for targeted intervention.
 
 \paragraph{Research question.}
-\emph{Does specialty-level heterogeneity significantly contribute to 30-day
-readmission risk among diabetic patients, after adjusting for patient-level
-covariates?}
+\emph{Is there evidence of residual specialty-level heterogeneity in 30-day
+readmission odds among diabetic patients, after adjusting for observed
+patient-level covariates?}
 
 \paragraph{Why a Bayesian approach?}
 A Bayesian hierarchical model offers three advantages over frequentist
@@ -167,9 +169,9 @@ Specialty group sizes range from 288 (Physical Medicine and Rehabilitation) to
 (Obstetrics/Gynecology) to 32.3\% (Physical Medicine and Rehabilitation).
 Figure~\ref{fig:specialty-dist} shows the specialty distribution.
 
-\begin{figure}[H]
+\begin{figure}[htbp]
 \centering
-\includegraphics[width=0.85\textwidth]{fig1_specialty_distribution.png}
+\includegraphics[width=0.85\textwidth,height=\maxfigheight,keepaspectratio]{fig1_specialty_distribution.png}
 \caption{Distribution of encounters across the 19 specialty groups.}
 \label{fig:specialty-dist}
 \end{figure}
@@ -214,19 +216,23 @@ near zero while permitting substantial heterogeneity.
 
 \subsection{Hierarchical Structure}
 
-The key feature is the exchangeable random intercepts
-$u_j \mid \tau \iid \Normal(0, \tau^2)$.  The shared scale $\tau$ induces
-\emph{partial pooling}: specialty estimates are shrunk toward the global mean,
-with the degree of shrinkage inversely related to group size $n_j$.  When
-$\tau \to 0$, all specialties collapse to a single intercept (complete
-pooling); as $\tau \to \infty$, each group estimates its own intercept
-independently (no pooling).
+The key feature is the \emph{prior assumption} of exchangeable random intercepts
+$u_j \mid \tau \iid \Normal(0, \tau^2)$.  Before observing the data, this treats
+specialties symmetrically, with no specialty singled out as systematically
+higher or lower risk.  The shared scale $\tau$ induces \emph{partial pooling}:
+the specialty-specific intercepts $\alpha + u_j$ are shrunk toward the overall
+intercept $\alpha$; all else equal, smaller or less informative groups undergo
+more shrinkage.  When $\tau \to 0$, all specialties collapse to a single
+intercept (complete pooling); as $\tau \to \infty$, each group estimates its
+own intercept independently (no pooling).
 
 \subsection{Assumptions}
 \begin{enumerate}[label=(\roman*)]
   \item Conditional independence of outcomes given parameters.
   \item One observation per patient (first encounter retained).
-  \item Specialty assignment is exogenous (not modelled).
+  \item Specialty assignment is treated as fixed and not modelled; resulting
+    specialty contrasts are therefore interpreted associationally rather than
+    causally.
   \item Only random intercepts; no random slopes.
   \item Prior independence: $\alpha \perp \bbeta \perp \tau$ \textit{a priori};
     $\bu$ depends on $\tau$ only.
@@ -258,14 +264,15 @@ Substituting the likelihood and priors:
   - \underbrace{\frac{1}{2s_\beta^2}\sum_{k=1}^{K}\beta_k^2}_{\text{(III)}}
   \notag\\
   &\quad
-  - \underbrace{J\log\tau + \frac{1}{2\tau^2}\sum_{j=1}^{J}u_j^2}_{\text{(IV)}}
-  - \underbrace{\frac{\tau^2}{2s_\tau^2}}_{\text{(V)}}
+  - \underbrace{J\log\tau + \frac{1}{2\tau^2}\sum_{j=1}^{J}u_j^2}_{\text{(IV) random-effects prior}}
+  - \underbrace{\frac{\tau^2}{2s_\tau^2}}_{\text{(V) hyperprior}}
   + \text{const.}
   \label{eq:logpost}
 \end{align}
 
-The logistic likelihood makes this posterior non-conjugate: no parameter block
-has a closed-form full conditional.
+The logistic likelihood makes this posterior non-conjugate.  Under our chosen
+parameterisation and block updates, we therefore use Metropolis steps rather
+than Gibbs draws from closed-form full conditionals.
 
 \subsection{Full Conditional Distributions}
 
@@ -280,28 +287,47 @@ terms from~\eqref{eq:logpost} that depend on the parameter being updated.
 \end{equation}
 
 \paragraph{Block 2: $\beta_k$ (for each $k = 1,\dots,K$).}
+For fixed $k$, write
+\[
+  \eta_i = c_{ik} + x_{ik}\beta_k,
+  \qquad
+  c_{ik} = \alpha + \sum_{\ell \neq k} x_{i\ell}\beta_\ell + u_{j[i]},
+\]
+where $c_{ik}$ collects all terms that are held fixed when updating $\beta_k$.
 \begin{equation}
   h(\beta_k) = \sum_{i=1}^{N}
-    \bigl[y_i\eta_i - \log(1+e^{\eta_i})\bigr]
+    \Bigl[y_i(c_{ik} + x_{ik}\beta_k)
+    - \log\!\bigl(1+e^{c_{ik} + x_{ik}\beta_k}\bigr)\Bigr]
   - \frac{\beta_k^2}{2s_\beta^2}.
 \end{equation}
 
 \paragraph{Block 3: $u_j$ (for each $j = 1,\dots,J$).}
-Only group-$j$ observations contribute:
+Only group-$j$ observations contribute.  For $i$ such that $j[i]=j$, write
+\[
+  \eta_i = c_i + u_j,
+  \qquad
+  c_i = \alpha + \bx_i^\top\bbeta,
+\]
+where $c_i$ is fixed when updating $u_j$.
 \begin{equation}
   h(u_j) = \sum_{i:\,j[i]=j}
-    \bigl[y_i\eta_i - \log(1+e^{\eta_i})\bigr]
+    \Bigl[y_i(c_i + u_j)
+    - \log\!\bigl(1+e^{c_i + u_j}\bigr)\Bigr]
   - \frac{u_j^2}{2\tau^2}.
 \end{equation}
 
 \paragraph{Block 4: $\phi = \log\tau$ (reparametrised).}
-Applying the change of variable $\tau = e^\phi$ with Jacobian $+\phi$:
+Applying the change of variable $\tau = e^\phi$, with Jacobian
+$\log\lvert d\tau/d\phi \rvert = \phi$:
 \begin{equation}
   h(\phi) = -J\phi - \frac{1}{2e^{2\phi}}\sum_{j=1}^{J}u_j^2
             - \frac{e^{2\phi}}{2s_\tau^2} + \phi.
 \end{equation}
-Importantly, $h(\phi)$ does not involve the likelihood: data inform $\tau$
-only indirectly through the posterior draws of $\bu$.
+Conditional on $(\alpha,\bbeta,\bu)$, the likelihood contributes no
+additional term to $h(\phi)$; equivalently,
+$p(\tau \mid \alpha,\bbeta,\bu,\by,\bX) = p(\tau \mid \bu)$.
+The observed data still influence the marginal posterior $p(\tau \mid \by,\bX)$
+through the information they provide about $\bu$.
 
 \subsection{Posterior Propriety}
 
@@ -309,19 +335,32 @@ only indirectly through the posterior draws of $\bu$.
 The posterior is proper.
 \end{proposition}
 \begin{proof}[Proof sketch]
-The Bernoulli likelihood is bounded ($0 \le p(\by \mid \cdot) \le 1$), and
-all priors ($\alpha$, $\bbeta$, $\bu \mid \tau$, $\tau$) are proper
-distributions.  Therefore the joint integrand is bounded above by the product
-of proper priors, which integrates to 1.
+The Bernoulli likelihood is bounded ($0 \le p(\by \mid \alpha,\bbeta,\bu,\bX)
+\le 1$), and all priors are proper.  Hence
+\[
+  \begin{aligned}
+    &\int p(\by \mid \alpha,\bbeta,\bu,\bX)\,p(\alpha)\,p(\bbeta)\,
+      p(\bu \mid \tau)\,p(\tau)\,d\alpha\,d\bbeta\,d\bu\,d\tau \\
+    &\le \int p(\alpha)\,d\alpha
+      \int p(\bbeta)\,d\bbeta
+      \int p(\tau)\Bigl[\int p(\bu \mid \tau)\,d\bu\Bigr]d\tau
+      = 1.
+  \end{aligned}
+\]
+Therefore the posterior normalising constant is finite, so the posterior is
+proper.
 \end{proof}
 
 \subsection{Identifiability}
 
-The intercept $\alpha$ and random intercepts $\bu$ are weakly
-non-identifiable: shifting $\alpha$ by $+c$ and each $u_j$ by $-c$ leaves
-$\eta_i$ unchanged.  The priors $p(\alpha)$ and $p(\bu \mid \tau)$ break this
-symmetry by anchoring both at zero.  We further address this computationally
-with a joint translation move (Block~5 in Section~\ref{sec:computation}).
+The intercept $\alpha$ and random intercepts $\bu$ are not separately
+identified by the likelihood alone: shifting $\alpha$ by $+c$ and each $u_j$
+by $-c$ leaves $\eta_i$ unchanged.  The proper priors $p(\alpha)$ and
+$p(\bu \mid \tau)$ provide \emph{soft identification} by anchoring both
+components near zero, which yields a well-defined posterior.  Even so,
+$\alpha$ and the mean of $\bu$ can remain strongly negatively correlated in the
+posterior.  We further address this computationally with a joint translation
+move (Block~5 in Section~\ref{sec:computation}).
 
 % ══════════════════════════════════════════════════════════════════
 \section{Computational Strategy}
@@ -389,9 +428,9 @@ representative parameters.  All four chains mix well and overlap,
 indicating convergence.  Autocorrelation decays rapidly to near zero within
 20--50 lags for most parameters.
 
-\begin{figure}[H]
+\begin{figure}[p]
 \centering
-\includegraphics[width=\textwidth]{fig2_trace_plots.png}
+\includegraphics[width=\textwidth,height=0.88\textheight,keepaspectratio]{fig2_trace_plots.png}
 \caption{Trace plots (left) and autocorrelation functions (right) for
 selected parameters.  The four chains are overlaid in different colours.}
 \label{fig:trace}
@@ -505,9 +544,9 @@ specialty whose interval is entirely above zero.  At the other extreme,
 have credible intervals that include zero, indicating that after covariate
 adjustment, their readmission rates are consistent with the overall average.
 
-\begin{figure}[H]
+\begin{figure}[htbp]
 \centering
-\includegraphics[width=0.75\textwidth]{fig4_specialty_random_effects.png}
+\includegraphics[width=0.75\textwidth,height=\maxfigheight,keepaspectratio]{fig4_specialty_random_effects.png}
 \caption{Specialty random effects (posterior mean and 95\% CrI).  Red:
 interval entirely above zero; blue: entirely below zero; grey: includes zero.}
 \label{fig:forest}
@@ -539,9 +578,14 @@ small groups and a coherent estimate of between-group variability.
 
 \paragraph{DIC.}  The DIC for the hierarchical model is
 $\text{DIC} = 23{,}254$ with effective number of parameters
-$p_D = 60.5$.  The nominal parameter count is 64
-($1 + 43 + 19 + 1$); $p_D < 64$ confirms that the hierarchical
-prior induces shrinkage on the random intercepts, as expected.
+$p_D = 60.5$.  Here the deviance is the conditional deviance
+$D(\btheta) = -2\log p(\by \mid \alpha,\bbeta,\bu)$, so the likelihood-active
+nominal parameter count is 63 ($1 + 43 + 19$); $\tau$ influences the posterior
+through the hierarchical prior but does not enter this deviance directly.
+Accordingly, $p_D$ should be interpreted as an \emph{effective complexity}
+measure for those likelihood-active parameters rather than a literal parameter
+count.  The fact that $p_D < 63$ is consistent with posterior dependence and
+shrinkage, though it is not by itself a proof of shrinkage.
 
 \subsection{Posterior Predictive Checks}
 
@@ -551,9 +595,9 @@ distribution (Bayesian $p$-value $= 0.500$), and the observed
 specialty-rate variability is also well-captured ($p$-value $= 0.245$).
 Both checks confirm adequate model fit.
 
-\begin{figure}[H]
+\begin{figure}[htbp]
 \centering
-\includegraphics[width=\textwidth]{fig5_posterior_predictive.png}
+\includegraphics[width=0.95\textwidth,height=0.42\textheight,keepaspectratio]{fig5_posterior_predictive.png}
 \caption{Posterior predictive checks.  (A) Overall readmission rate.
 (B) Standard deviation of specialty-level rates.  Dashed red lines show
 observed values.}
@@ -581,16 +625,16 @@ Figure~\ref{fig:sens-beta} demonstrates that key fixed effects (e.g.,
 $\text{diag1\_Neoplasms}$, $\text{comorbid\_neoplasms}$, $\text{A1C\_measured}$)
 are stable across prior specifications.
 
-\begin{figure}[H]
+\begin{figure}[htbp]
 \centering
-\includegraphics[width=0.85\textwidth]{fig6_sensitivity_tau.png}
+\includegraphics[width=0.85\textwidth,height=0.36\textheight,keepaspectratio]{fig6_sensitivity_tau.png}
 \caption{Posterior distribution of $\tau$ under four prior configurations.}
 \label{fig:sens-tau}
 \end{figure}
 
-\begin{figure}[H]
+\begin{figure}[htbp]
 \centering
-\includegraphics[width=0.85\textwidth]{fig7_sensitivity_beta.png}
+\includegraphics[width=0.82\textwidth,height=0.52\textheight,keepaspectratio]{fig7_sensitivity_beta.png}
 \caption{Posterior means and 95\% CrI for key fixed effects under four prior
 configurations.}
 \label{fig:sens-beta}
@@ -612,17 +656,18 @@ priors.
 Our analysis provides three main findings:
 
 \begin{enumerate}
-  \item \textbf{Specialty matters.}  The between-specialty standard deviation
-    $\tau = 0.437$ (95\% CrI [0.298, 0.644]) demonstrates that medical
-    specialty contributes meaningfully to readmission risk beyond what is
-    explained by patient characteristics.
+  \item \textbf{Evidence of specialty-level heterogeneity.}  The
+    between-specialty standard deviation $\tau = 0.437$ (95\% CrI
+    [0.298, 0.644]) indicates residual variation in adjusted readmission
+    log-odds across specialties beyond what is explained by observed patient
+    characteristics.
 
   \item \textbf{PMR is an outlier.}  Physical Medicine and Rehabilitation shows
-    dramatically elevated readmission risk ($u = +1.32$, corresponding to a
-    raw rate of 32.3\%), even after adjusting for covariates.  This may
-    reflect the unique patient population (e.g., stroke rehabilitation
-    patients with high medical complexity) and could represent a target for
-    quality improvement.
+    a markedly elevated adjusted random intercept ($u = +1.32$), consistent
+    with its high raw readmission rate (32.3\%), even after covariate
+    adjustment.  This may reflect the unique patient population (e.g., stroke
+    rehabilitation patients with high medical complexity) and could represent a
+    target for quality improvement.
 
   \item \textbf{Key patient-level risk factors.}  Prior inpatient visits,
     comorbid neoplasms, A1C measurement, age, and number of diagnoses are
@@ -635,10 +680,12 @@ Our analysis provides three main findings:
 With $N = 37{,}964$ observations, the posteriors of fixed effects $\bbeta$ are
 overwhelmingly data-driven: the sensitivity analysis confirms negligible
 prior influence.  The random intercepts exhibit a gradient: large groups
-(e.g., Internal Medicine, $n = 10{,}975$) are likelihood-driven, while small
-groups (e.g., PMR, $n = 288$) experience meaningful shrinkage toward zero.
-The hyperparameter $\tau$ is estimated primarily from the empirical spread
-of the $u_j$'s, with $J = 19$ groups providing sufficient information.
+(e.g., Internal Medicine, $n = 10{,}975$) are largely likelihood-driven, while
+smaller groups with less information (e.g., PMR, $n = 288$) experience more
+shrinkage toward zero, all else equal.  The hyperparameter $\tau$ is informed
+by the posterior dispersion of the $u_j$'s, with $J = 19$ groups providing
+meaningful, though not unlimited, information about between-specialty
+variation.
 
 \subsection{Limitations}
 
@@ -660,8 +707,9 @@ of the $u_j$'s, with $J = 19$ groups providing sufficient information.
 
   \item \textbf{Observational design.}  Specialty assignment is not random;
     patients are referred based on clinical need.  The estimated specialty
-    effects reflect residual confounding as well as genuine practice
-    differences.
+    effects should therefore be interpreted as adjusted associations that may
+    reflect residual confounding as well as genuine practice differences, not
+    as identified causal effects.
 
   \item \textbf{Moderate discriminative performance.}  AUC $= 0.641$ reflects
     the inherent difficulty of predicting readmission from administrative
