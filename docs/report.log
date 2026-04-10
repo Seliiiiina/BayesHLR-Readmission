@@ -355,32 +355,32 @@ File: l3backend-xetex.def 2022-02-07 L3 backend support: XeTeX
 ) (report.aux)
 \openout1 = `report.aux'.
 
-LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 90.
-LaTeX Font Info:    ... okay on input line 90.
-LaTeX Font Info:    Checking defaults for OMS/cmsy/m/n on input line 90.
-LaTeX Font Info:    ... okay on input line 90.
-LaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 90.
-LaTeX Font Info:    ... okay on input line 90.
-LaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 90.
-LaTeX Font Info:    ... okay on input line 90.
-LaTeX Font Info:    Checking defaults for TS1/cmr/m/n on input line 90.
-LaTeX Font Info:    Trying to load font information for TS1+cmr on input line 9
-0.
+LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 75.
+LaTeX Font Info:    ... okay on input line 75.
+LaTeX Font Info:    Checking defaults for OMS/cmsy/m/n on input line 75.
+LaTeX Font Info:    ... okay on input line 75.
+LaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 75.
+LaTeX Font Info:    ... okay on input line 75.
+LaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 75.
+LaTeX Font Info:    ... okay on input line 75.
+LaTeX Font Info:    Checking defaults for TS1/cmr/m/n on input line 75.
+LaTeX Font Info:    Trying to load font information for TS1+cmr on input line 7
+5.
 
 (ts1cmr.fd
 File: ts1cmr.fd 2019/12/16 v2.5j Standard LaTeX font definitions
 )
-LaTeX Font Info:    ... okay on input line 90.
-LaTeX Font Info:    Checking defaults for TU/lmr/m/n on input line 90.
-LaTeX Font Info:    ... okay on input line 90.
-LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 90.
-LaTeX Font Info:    ... okay on input line 90.
-LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 90.
-LaTeX Font Info:    ... okay on input line 90.
-LaTeX Font Info:    Checking defaults for PD1/pdf/m/n on input line 90.
-LaTeX Font Info:    ... okay on input line 90.
-LaTeX Font Info:    Checking defaults for PU/pdf/m/n on input line 90.
-LaTeX Font Info:    ... okay on input line 90.
+LaTeX Font Info:    ... okay on input line 75.
+LaTeX Font Info:    Checking defaults for TU/lmr/m/n on input line 75.
+LaTeX Font Info:    ... okay on input line 75.
+LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 75.
+LaTeX Font Info:    ... okay on input line 75.
+LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 75.
+LaTeX Font Info:    ... okay on input line 75.
+LaTeX Font Info:    Checking defaults for PD1/pdf/m/n on input line 75.
+LaTeX Font Info:    ... okay on input line 75.
+LaTeX Font Info:    Checking defaults for PU/pdf/m/n on input line 75.
+LaTeX Font Info:    ... okay on input line 75.
 
 *geometry* driver: auto-detecting
 *geometry* detected driver: xetex
@@ -416,7 +416,7 @@ LaTeX Font Info:    ... okay on input line 90.
 * \@reversemarginfalse
 * (1in=72.27pt=25.4mm, 1cm=28.453pt)
 
-Package hyperref Info: Link coloring OFF on input line 90.
+Package hyperref Info: Link coloring OFF on input line 75.
 (nameref.sty
 Package: nameref 2021-04-02 v2.47 Cross-referencing by name of section
  (refcount.sty
@@ -426,9 +426,9 @@ Package: gettitlestring 2019/12/15 v1.6 Cleanup title references (HO)
 )
 \c@section@level=\count303
 )
-LaTeX Info: Redefining \ref on input line 90.
-LaTeX Info: Redefining \pageref on input line 90.
-LaTeX Info: Redefining \nameref on input line 90.
+LaTeX Info: Redefining \ref on input line 75.
+LaTeX Info: Redefining \pageref on input line 75.
+LaTeX Info: Redefining \nameref on input line 75.
  (report.out) (report.out)
 \@outlinefile=\write3
 \openout3 = `report.out'.
@@ -436,69 +436,52 @@ LaTeX Info: Redefining \nameref on input line 90.
 Package caption Info: Begin \AtBeginDocument code.
 Package caption Info: float package is loaded.
 Package caption Info: End \AtBeginDocument code.
-LaTeX Font Info:    Trying to load font information for U+msa on input line 92.
+LaTeX Font Info:    Trying to load font information for U+msa on input line 77.
 
 
 (umsa.fd
 File: umsa.fd 2013/01/14 v3.01 AMS symbols A
 )
-LaTeX Font Info:    Trying to load font information for U+msb on input line 92.
+LaTeX Font Info:    Trying to load font information for U+msb on input line 77.
 
  (umsb.fd
 File: umsb.fd 2013/01/14 v3.01 AMS symbols B
 ) [1
 
-]
-File: ../output/figures//fig1_specialty_distribution.png Graphic file (type bmp
-)
-<../output/figures//fig1_specialty_distribution.png>
-File: ../output/figures//fig3_raw_readmission_by_specialty.png Graphic file (ty
-pe bmp)
-<../output/figures//fig3_raw_readmission_by_specialty.png>
- [2] [3] [4] [5] [6] [7]
-Underfull \hbox (badness 1859) in paragraph at lines 624--624
-[]\TU/lmr/m/n/9 Scalar random walk on the uncon-
- []
-
-
-Overfull \hbox (1.89714pt too wide) in paragraph at lines 617--628
- [][] 
- []
-
-[8]
-Overfull \hbox (7.87218pt too wide) in paragraph at lines 712--718
+] [2] [3] [4] [5] [6]
+Overfull \hbox (7.87218pt too wide) in paragraph at lines 622--628
 \TU/lmr/m/n/10 The logistic likelihood prevents closed-form full conditionals, 
 ruling out standard Gibbs sampling. Full-dimensional
  []
 
-[9]
+[7]
 File: ../output/figures//fig2_trace_plots.png Graphic file (type bmp)
 <../output/figures//fig2_trace_plots.png>
- [10]
+ [8]
 
 Package hyperref Warning: Token not allowed in a PDF string (Unicode):
-(hyperref)                removing `math shift' on input line 806.
+(hyperref)                removing `math shift' on input line 719.
 
 
 Package hyperref Warning: Token not allowed in a PDF string (Unicode):
-(hyperref)                removing `math shift' on input line 806.
+(hyperref)                removing `math shift' on input line 719.
 
-[11] [12]
+[9] [10]
 File: ../output/figures//fig_tau_posterior.png Graphic file (type bmp)
 <../output/figures//fig_tau_posterior.png>
 File: ../output/figures//fig4_specialty_random_effects.png Graphic file (type b
 mp)
 <../output/figures//fig4_specialty_random_effects.png>
- [13] [14]
+ [11] [12]
 File: ../output/figures//fig5_posterior_predictive.png Graphic file (type bmp)
 <../output/figures//fig5_posterior_predictive.png>
- [15]
+ [13]
 File: ../output/figures//fig6_sensitivity_tau.png Graphic file (type bmp)
 <../output/figures//fig6_sensitivity_tau.png>
 File: ../output/figures//fig7_sensitivity_beta.png Graphic file (type bmp)
 <../output/figures//fig7_sensitivity_beta.png>
- [16] [17] [18] [19] (report.aux)
+ [14] [15] [16] (report.aux)
 Package rerunfilecheck Info: File `report.out' has not changed.
-(rerunfilecheck)             Checksum: DBD831A0047BD9BCFC16838874F17573;6704.
+(rerunfilecheck)             Checksum: 540AF9CFE94CE2543854901A81BCF83C;6636.
  )
-Output written on report.xdv (19 pages, 454828 bytes).
+Output written on report.xdv (16 pages, 441208 bytes).
