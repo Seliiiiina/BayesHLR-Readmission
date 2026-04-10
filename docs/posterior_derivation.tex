@@ -533,12 +533,16 @@ effect on the posterior of $\tau$.
 \subsection{Proposal Tuning}
 
 Each proposal standard deviation $\sigma_{\text{prop}}$ is tuned
-automatically over 10 rounds of short pilot runs (2,000 iterations each)
-using a multiplicative adaptation rule: if the acceptance rate exceeds
-the target (0.44 for scalars, per Roberts \& Rosenthal, 2001),
-$\sigma_{\text{prop}}$ is multiplied by 1.5; if below target, it is
-divided by 1.5. Per-coordinate proposal SDs are maintained for each
-$\beta_k$ and $u_j$ to accommodate varying posterior curvatures.
+automatically over up to 20 rounds of short pilot runs (2,000 iterations
+each) on a subsample of $n = 20{,}000$ observations. We target the
+acceptance-rate interval $[0.20, 0.50]$, centred around the scalar-optimal
+benchmark of roughly 0.44 from Roberts \& Rosenthal (2001). If the
+acceptance rate exceeds 0.50, $\sigma_{\text{prop}}$ is multiplied by 1.5;
+if it falls below 0.20, it is multiplied by 0.5; otherwise it is left
+unchanged. Per-coordinate proposal SDs are maintained for each $\beta_k$
+and $u_j$ to accommodate varying posterior curvatures. Tuning stops once
+all parameters are in range, or earlier if at least 90\% of
+parameter-specific acceptance rates are already within the target interval.
 
 \subsection{Chain Configuration}
 

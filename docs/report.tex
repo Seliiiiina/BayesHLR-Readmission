@@ -65,6 +65,21 @@
 \newtheorem{proposition}{Proposition}
 \newtheorem{remark}{Remark}
 
+\newcommand{\sectionlead}[1]{%
+  \vspace{0.2ex}%
+  \noindent\begin{minipage}{\linewidth}\small\itshape #1\end{minipage}\par
+  \vspace{0.6ex}%
+}
+
+\newcommand{\takeawaybox}[2]{%
+  \begin{center}
+    \begingroup
+    \setlength{\fboxsep}{6pt}%
+    \fbox{\begin{minipage}{0.94\linewidth}\small\textbf{#1.} #2\end{minipage}}%
+    \endgroup
+  \end{center}
+}
+
 % ══════════════════════════════════════════════════════════════════
 \title{\textbf{Bayesian Hierarchical Logistic Regression for\\
        30-Day Hospital Readmission Among Diabetic Patients:\\
@@ -101,7 +116,7 @@ We use the Diabetes 130-US Hospitals dataset \citep{strack2014diabetes}, compris
 
 \subsection{Cohort Construction}
 
-Starting from $N_{\text{raw}} = 101{,}766$, variables with high missingness or no variation were removed, including weight, payer_code, citoglipton, and examide. To ensure independence, only the first encounter per patient was retained, yielding $N = 71{,}518$. Encounters corresponding to expired or hospice discharges were excluded, leaving $N = 69{,}973$. The outcome was defined as $y_i = 1$ for readmission within 30 days ($<30$), and $0$ otherwise. Encounters with unknown specialty were excluded (45.7\%), resulting in $N = 37{,}965$, and specialties were grouped into $J = 19$ categories by merging small groups. One record with unknown gender was removed, yielding a final sample size of $N = 37{,}964$. Continuous variables were standardised to $z$-scores, and categorical features were constructed from demographics, ICD-9 diagnosis groups, comorbidities, and medication indicators. The final dataset includes $N = 37{,}964$ encounters, $J = 19$ specialties, $K = 43$ covariates, and a 30-day readmission rate of $9.60\%$.
+Starting from $N_{\text{raw}} = 101{,}766$, variables with high missingness or no variation were removed, including weight, payer\_code, citoglipton, and examide. To ensure independence, only the first encounter per patient was retained, yielding $N = 71{,}518$. Encounters corresponding to expired or hospice discharges were excluded, leaving $N = 69{,}973$. The outcome was defined as $y_i = 1$ for readmission within 30 days (\textless 30), and $0$ otherwise. Encounters with unknown specialty were excluded (45.7\%), resulting in $N = 37{,}965$, and specialties were grouped into $J = 19$ categories by merging small groups. One record with unknown gender was removed, yielding a final sample size of $N = 37{,}964$. Continuous variables were standardised to $z$-scores, and categorical features were constructed from demographics, ICD-9 diagnosis groups, comorbidities, and medication indicators. The final dataset includes $N = 37{,}964$ encounters, $J = 19$ specialties, $K = 43$ covariates, and a 30-day readmission rate of $9.60\%$.
 
 The cohort has a mean age of 64.9 years, with $53.5\%$ female and $73.0\%$ Caucasian patients. Readmitted patients are older and exhibit greater clinical complexity, including longer stays, more medications, more prior inpatient visits, and more diagnoses.
 
@@ -110,10 +125,32 @@ Specialty group sizes range from 288 (Physical Medicine and Rehabilitation) to
 (Obstetrics/Gynecology) to 32.3\% (Physical Medicine and Rehabilitation).
 The wide dispersion in unadjusted readmission rates motivates a model that accounts for specialty-level heterogeneity.
 
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth,height=0.62\textheight,keepaspectratio]{fig1_specialty_distribution.png}
+\caption{Distribution of encounter counts across the 19 specialty groups in the
+analysis cohort. The pronounced group-size imbalance motivates partial pooling
+in the hierarchical model.}
+\label{fig:specialty-distribution}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth,height=0.62\textheight,keepaspectratio]{fig3_raw_readmission_by_specialty.png}
+\caption{Raw 30-day readmission rates by specialty, with sample sizes shown for
+context. The wide spread in unadjusted rates motivates modeling
+specialty-level heterogeneity while accounting for unequal group sizes.}
+\label{fig:raw-readmission-by-specialty}
+\end{figure}
+
 % ══════════════════════════════════════════════════════════════════
 \section{Model Specification}
 \label{sec:model}
 % ══════════════════════════════════════════════════════════════════
+
+\sectionlead{This section defines the hierarchical logistic model, introduces
+the notation used throughout the derivations, and highlights how the shared
+scale $\tau$ induces partial pooling across specialties.}
 
 \subsection{Notation}
 
@@ -142,6 +179,11 @@ $\eta_i$ & Linear predictor for observation $i$ \\
 \bottomrule
 \end{tabular}
 \end{table}
+
+\takeawaybox{Hierarchy at a Glance}{Level 1 models readmission outcomes
+through a logistic regression, Level 2 places exchangeable Gaussian priors on
+the specialty effects $u_j$, and Level 3 learns their dispersion through the
+hyperparameter $\tau$.}
 
 \subsection{Likelihood}
 
@@ -194,9 +236,10 @@ minimal substantive constraint while ensuring posterior propriety:
     near zero while permitting substantial heterogeneity
     \citep{gelman2006prior}.  This choice reflects the prior belief that
     specialty effects, while potentially present, are unlikely to dominate
-    patient-level predictors.  On the log-odds scale, $\tau = 1$ corresponds
-    to a roughly 2.7-fold variation in odds between specialties at $\pm 1$~SD,
-    which is already large.
+    patient-level predictors.  On the log-odds scale, $\tau = 1$ implies that
+    a specialty lying one standard deviation above the population mean has
+    odds about $e^1 \approx 2.7$ times as large as the population-average
+    specialty, which is already substantial.
 \end{itemize}
 
 \subsection{Hierarchical Structure}
@@ -230,6 +273,11 @@ signal-to-noise ratio within each group:
 \end{itemize}
 This adaptive, data-driven regularisation is the core advantage of the
 hierarchical approach.
+
+\takeawaybox{Partial Pooling Intuition}{Large specialties are driven mainly by
+their own data, whereas small specialties borrow more strength from the common
+distribution $u_j \mid \tau \sim \Normal(0,\tau^2)$.  The amount of borrowing
+is therefore learned rather than fixed in advance.}
 
 \subsection{Latent Variables}
 
@@ -272,6 +320,15 @@ $s_\tau$ & 1.0 & Scale of the half-normal hyperprior on $\tau$; concentrates mas
 \section{Posterior Derivation}
 \label{sec:derivation}
 % ══════════════════════════════════════════════════════════════════
+
+\sectionlead{We move from the factorised joint density to the log-posterior,
+then isolate the terms needed for each Metropolis-within-Gibbs update.  The
+guiding rule is simple: retain every term involving the block being updated
+and absorb everything else into the normalising constant.}
+
+\takeawaybox{Derivation Flow}{The posterior construction proceeds in three
+steps: write the joint density, drop parameter-free constants to obtain the
+log-posterior, and collect only the relevant terms for the current block.}
 
 \subsection{Joint Distribution}
 
@@ -352,6 +409,11 @@ when implemented as $\log(1+e^{\eta_i}) = \mathrm{logaddexp}(0,\eta_i)$.
 The logistic likelihood makes this posterior non-conjugate: no parameter block
 has a closed-form full conditional, necessitating MCMC sampling.
 
+\takeawaybox{Reading Each Block Target}{For any parameter block $\theta$, the
+working log-target $h(\theta)$ is obtained by retaining all terms in
+\eqref{eq:logpost} that depend on $\theta$ and treating the remainder as an
+additive constant.}
+
 \subsection{Full Conditional Distributions}
 
 We derive the log-target $h(\cdot)$ for each parameter block by collecting
@@ -359,57 +421,79 @@ all terms from~\eqref{eq:logpost} that depend on the parameter being updated
 and treating everything else as a constant.
 
 \paragraph{Block 1: $\alpha$ (intercept).}
-Collecting terms (I) and (II) that involve $\alpha$ (recall $\eta_i = \alpha + \bx_i^\top\bbeta + u_{j[i]}$):
+\textit{Target.} Collecting terms (I) and (II) that depend on $\alpha$
+(recall $\eta_i = \alpha + \bx_i^\top\bbeta + u_{j[i]}$) gives
 \begin{equation}\label{eq:fc-alpha}
   h(\alpha) = \sum_{i=1}^{N}
     \bigl[y_i\,\eta_i - \log(1+e^{\eta_i})\bigr]
   - \frac{\alpha^2}{2\sigma_\alpha^2}.
 \end{equation}
-The first term is the full log-likelihood (since every observation's $\eta_i$ depends on $\alpha$); the second is the Gaussian prior penalty.
+The first term is the full log-likelihood, while the second is the Gaussian
+prior penalty.
 
-Proposal and acceptance:
-\begin{align}
-  &\alpha^* = \alpha^{(t)} + \epsilon, \quad \epsilon \sim \Normal(0,\sigma_{\alpha,\text{prop}}^2), \\
-  &\log R = h(\alpha^*) - h(\alpha^{(t)}).
-\end{align}
+\textit{Proposal.}
+\[
+  \alpha^* = \alpha^{(t)} + \epsilon,
+  \qquad \epsilon \sim \Normal(0,\sigma_{\alpha,\text{prop}}^2).
+\]
+
+\textit{Acceptance ratio.}
+\[
+  \log R = h(\alpha^*) - h(\alpha^{(t)}).
+\]
 
 \paragraph{Block 2: $\beta_k$ (for each $k = 1,\dots,K$).}
-Similarly, since $\eta_i$ depends linearly on $\beta_k$ through $x_{ik}\beta_k$:
+\textit{Target.} Since $\eta_i$ depends linearly on $\beta_k$ through
+$x_{ik}\beta_k$, the corresponding log-target is
 \begin{equation}\label{eq:fc-beta}
   h(\beta_k) = \sum_{i=1}^{N}
     \bigl[y_i\,\eta_i - \log(1+e^{\eta_i})\bigr]
   - \frac{\beta_k^2}{2s_\beta^2}.
 \end{equation}
-Each $\beta_k$ is updated individually (scalar-at-a-time Gibbs scan within the $\bbeta$ block),
-holding all other $\beta_{k'}$ ($k' \neq k$) fixed at their current values.
+Each $\beta_k$ is updated individually, holding all other coefficients
+$\beta_{k'}$ ($k' \neq k$) fixed at their current values.
 
-Proposal and acceptance:
-\begin{align}
-  &\beta_k^* = \beta_k^{(t)} + \epsilon, \quad \epsilon \sim \Normal(0,\sigma_{\beta_k,\text{prop}}^2), \\
-  &\log R = h(\beta_k^*) - h(\beta_k^{(t)}).
-\end{align}
+\textit{Proposal.}
+\[
+  \beta_k^* = \beta_k^{(t)} + \epsilon,
+  \qquad \epsilon \sim \Normal(0,\sigma_{\beta_k,\text{prop}}^2).
+\]
+
+\textit{Acceptance ratio.}
+\[
+  \log R = h(\beta_k^*) - h(\beta_k^{(t)}).
+\]
 
 \paragraph{Block 3: $u_j$ (for each $j = 1,\dots,J$).}
-The key simplification is that $u_j$ enters $\eta_i$ only for observations in group $j$.  Hence only group-$j$ observations contribute to the likelihood term, while the prior term comes from $p(\bu \mid \tau)$:
+\textit{Target.} The key simplification is local dependence: $u_j$ enters
+$\eta_i$ only for observations in group $j$.  Hence only group-$j$
+observations contribute to the likelihood term:
 \begin{equation}\label{eq:fc-u}
   h(u_j) = \sum_{i:\,j[i]=j}
     \bigl[y_i\,\eta_i - \log(1+e^{\eta_i})\bigr]
   - \frac{u_j^2}{2\tau^2}.
 \end{equation}
-This reduces the computational cost from $O(N)$ to $O(n_j)$ per update, where $n_j$ is the group size.
+This reduces the computational cost from $O(N)$ to $O(n_j)$ per update.
 
-Proposal and acceptance:
-\begin{align}
-  &u_j^* = u_j^{(t)} + \epsilon, \quad \epsilon \sim \Normal(0,\sigma_{u_j,\text{prop}}^2), \\
-  &\log R = h(u_j^*) - h(u_j^{(t)}).
-\end{align}
+\textit{Proposal.}
+\[
+  u_j^* = u_j^{(t)} + \epsilon,
+  \qquad \epsilon \sim \Normal(0,\sigma_{u_j,\text{prop}}^2).
+\]
+
+\textit{Acceptance ratio.}
+\[
+  \log R = h(u_j^*) - h(u_j^{(t)}).
+\]
 
 \paragraph{Block 4: $\phi = \log\tau$ (reparametrised).}
-Since $\tau > 0$, we reparametrise $\phi = \log\tau$ so that the proposal operates on the unconstrained real line.  Under the map $\tau = e^\phi$, the Jacobian is
-$\bigl|\frac{d\tau}{d\phi}\bigr| = e^\phi = \tau$,
-which contributes an additive $+\phi$ to the log-density on the $\phi$ scale.
+\textit{Change of variable.} Since $\tau > 0$, we work on the unconstrained
+scale $\phi = \log\tau$.  The Jacobian of the transformation is
+$\bigl|\frac{d\tau}{d\phi}\bigr| = e^\phi = \tau$, contributing an additive
+$+\phi$ term to the log-density.
 
-Collecting terms (IV) and (V) from~\eqref{eq:logpost}, substituting $\tau = e^\phi$, and adding the log-Jacobian:
+\textit{Target.} Collecting terms (IV) and (V) from~\eqref{eq:logpost},
+substituting $\tau = e^\phi$, and adding the log-Jacobian yields
 \begin{equation}
   h(\phi)
   = -J\,\phi
@@ -422,11 +506,16 @@ Collecting terms (IV) and (V) from~\eqref{eq:logpost}, substituting $\tau = e^\p
   \label{eq:fc-log-tau}
 \end{equation}
 
-Proposal and acceptance:
-\begin{align}
-  &\phi^* = \phi^{(t)} + \epsilon, \quad \epsilon \sim \Normal(0,\sigma_{\phi,\text{prop}}^2), \\
-  &\log R = h(\phi^*) - h(\phi^{(t)}).
-\end{align}
+\textit{Proposal.}
+\[
+  \phi^* = \phi^{(t)} + \epsilon,
+  \qquad \epsilon \sim \Normal(0,\sigma_{\phi,\text{prop}}^2).
+\]
+
+\textit{Acceptance ratio.}
+\[
+  \log R = h(\phi^*) - h(\phi^{(t)}).
+\]
 
 \begin{remark}[Why $\tau$ does not depend on the likelihood]
 $h(\phi)$ does not involve the likelihood.  The likelihood involves $\bu$ but
@@ -434,18 +523,14 @@ not $\tau$ directly.  Conditional on $\bu$, the data $\by$ are independent of
 $\tau$.  Data inform $\tau$ only indirectly through the posterior draws
 of $\bu$: large spread in the $u_j$'s pulls $\tau$ upward, while concentrated
 $u_j$'s pull $\tau$ toward zero.  This is a defining feature of the
-hierarchical structure: $\tau$ is a ``hyperparameter'' that learns from the
-pattern of group effects rather than from individual observations.
+hierarchical structure: $\tau$ learns from the pattern of group effects rather
+than from individual observations directly.
 \end{remark}
 
 \paragraph{Sensitivity variant: Half-Cauchy hyperprior.}
-The Half-Cauchy distribution has heavier tails than the Half-Normal, placing
-more prior mass on large values of $\tau$.  This makes it a natural
-sensitivity check: if the posterior changes substantially under a
-heavy-tailed prior, the data are not sufficiently informative to pin down
-$\tau$.  When $\tau \sim \HalfCauchy(0, s_\tau)$, the log-prior on $\tau$
-becomes $-\log(1 + \tau^2/s_\tau^2) + \text{const.}$ instead of
-$-\tau^2/(2s_\tau^2)$.  On the $\phi$ scale, this replaces the last term
+\textit{Target.} Under $\tau \sim \HalfCauchy(0, s_\tau)$, the log-prior on
+$\tau$ becomes $-\log(1 + \tau^2/s_\tau^2) + \text{const.}$ instead of
+$-\tau^2/(2s_\tau^2)$.  On the $\phi$ scale, this replaces the final term
 in~\eqref{eq:fc-log-tau}:
 \begin{equation}\label{eq:fc-log-tau-hc}
   h_{\text{HC}}(\phi)
@@ -506,6 +591,11 @@ Categorical covariates use reference-category coding, ensuring a full-rank desig
 \label{sec:computation}
 % ══════════════════════════════════════════════════════════════════
 
+\sectionlead{This section turns the posterior targets into an implementable
+sampler.  The presentation separates generic Metropolis--Hastings mechanics
+from the model-specific block structure so that the computational logic is easy
+to scan before reading implementation details.}
+
 \subsection{Metropolis-within-Gibbs Sampler}
 
 The non-conjugate logistic likelihood rules out Gibbs sampling with
@@ -513,6 +603,29 @@ closed-form conditionals.  Full-dimensional Metropolis--Hastings on the
 $(1 + K + J + 1) = 64$-dimensional space would have prohibitively low
 acceptance rates.  We therefore use \textbf{Metropolis-within-Gibbs (MwG)},
 which decomposes the posterior into manageable blocks updated sequentially.
+
+\takeawaybox{Sampler Design}{Blocks~1--4 update scalar coordinates or the
+transformed scale parameter, while Block~5 targets the weakly identified
+translation ridge between $\alpha$ and $\bu$ to improve mixing at negligible
+additional cost.}
+
+\begin{table}[H]
+\centering
+\small
+\caption{Overview of the MwG update blocks.}
+\label{tab:mwg-overview}
+\begin{tabular}{p{0.08\linewidth} p{0.19\linewidth} p{0.33\linewidth} p{0.12\linewidth} p{0.16\linewidth}}
+\toprule
+Block & Parameter(s) & Proposal structure & Cost & Likelihood term? \\
+\midrule
+1 & $\alpha$ & Scalar random walk on the intercept & $O(N)$ & Yes \\
+2 & Each $\beta_k$ & Scalar random walk on one fixed effect at a time & $O(N)$ per $k$ & Yes \\
+3 & Each $u_j$ & Scalar random walk using only group-$j$ observations & $O(n_j)$ & Yes, local only \\
+4 & $\phi = \log\tau$ & Scalar random walk on the unconstrained scale & $O(J)$ & No \\
+5 & $(\alpha,\bu)$ jointly & Translation move $\alpha \mapsto \alpha+\delta$, $u_j \mapsto u_j-\delta$ & $O(J)$ ratio & No \\
+\bottomrule
+\end{tabular}
+\end{table}
 
 \paragraph{General Metropolis--Hastings framework.}
 For a generic block parameter $\theta$ with full conditional log-target $h(\theta) = \log p(\theta \mid \text{rest})$:
@@ -556,8 +669,7 @@ Compute $\log R = h(\phi^*) - h(\phi^{(t)})$ using~\eqref{eq:fc-log-tau}.
 This costs only $O(J)$ with no likelihood evaluation.
 
 \paragraph{Block 5: Joint translation move ($\alpha, \bu$), repeated $R = 10$ times.}
-Motivation.
-The intercept $\alpha$ and the random intercepts $\bu$ are weakly
+\textit{Motivation.} The intercept $\alpha$ and the random intercepts $\bu$ are weakly
 identified relative to each other: adding a constant $c$ to $\alpha$ and
 subtracting $c$ from every $u_j$ leaves $\eta_i$ unchanged (see
 Section~\ref{sec:derivation}, Identifiability).  Blocks~1 and~3 alone explore
@@ -566,16 +678,20 @@ at a time.  A dedicated joint move that simultaneously shifts $\alpha$ and all
 $u_j$'s by equal and opposite amounts directly traverses the ridge, accelerating
 mixing dramatically.
 
-Proposal.
-Propose $\delta \sim \Normal(0, \sigma_{\text{blk}}^2)$, set $\alpha^* = \alpha + \delta$ and $u_j^* = u_j - \delta$ for all $j$.  Since
+\textit{Proposal.} Propose $\delta \sim \Normal(0, \sigma_{\text{blk}}^2)$,
+set $\alpha^* = \alpha + \delta$ and $u_j^* = u_j - \delta$ for all $j$.  Since
 $\eta_i^* = (\alpha + \delta) + \bx_i^\top\bbeta + (u_{j[i]} - \delta) = \eta_i$,
 the linear predictor is invariant and the likelihood cancels exactly.  The acceptance ratio depends only on the priors:
+
+\textit{Acceptance ratio.}
 \begin{equation}\label{eq:block5-ratio}
   \log R
   = \underbrace{-\frac{{\alpha^*}^2 - \alpha^2}{2\sigma_\alpha^2}}_{\text{intercept prior}}
   \;+\; \underbrace{\left(-\frac{\sum_j {u_j^*}^2 - \sum_j u_j^2}{2\tau^2}\right)}_{\text{random effect prior}}.
 \end{equation}
-This move costs $O(J)$ with no likelihood evaluation, so we repeat it $R = 10$ times per iteration at negligible cost to accelerate mixing along the weakly identified ridge.
+Because this ratio is likelihood-free, we repeat the move $R = 10$ times per
+iteration at negligible additional cost to accelerate mixing along the weakly
+identified ridge.
 
 \subsection{Full Iteration Summary}
 
@@ -608,20 +724,24 @@ yields low acceptance and wasted computation.  We tune each proposal SD
 automatically via the following adaptive algorithm:
 
 \begin{enumerate}
-  \item \textbf{Pilot runs.}  Run 10 rounds of short pilot chains (2,000
+  \item \textbf{Pilot runs.}  Run up to 20 rounds of short pilot chains (2,000
     iterations each) on a random subsample of $n = 20{,}000$ observations to
     reduce per-iteration cost during tuning.
   \item \textbf{Adaptation rule.}  After each pilot round, compute the
-    empirical acceptance rate for each parameter.  If the acceptance rate
-    exceeds the target (0.44 for scalar parameters, following the
-    optimal-scaling theory of \citep{roberts2001optimal}), multiply
-    $\sigma_{\text{prop}}$ by 1.5; if below target, divide by 1.5.
+    empirical acceptance rate for each parameter.  We target the interval
+    $[0.20, 0.50]$, centred around the scalar-optimal benchmark of roughly
+    0.44 from \citep{roberts2001optimal}.  If the acceptance rate exceeds
+    0.50, multiply $\sigma_{\text{prop}}$ by 1.5; if it falls below 0.20,
+    multiply $\sigma_{\text{prop}}$ by 0.5; otherwise leave it unchanged.
   \item \textbf{Per-coordinate tuning.}  Separate proposal SDs are maintained
     for each $\beta_k$ ($k = 1,\dots,43$) and each $u_j$ ($j = 1,\dots,19$),
     because posterior curvatures vary substantially across covariates and
     groups (e.g., the proposal SD for a well-identified covariate like
     number\_inpatient\_z will be smaller than for a weakly identified
     race dummy).
+  \item \textbf{Stopping rule.}  Tuning stops once all parameters fall in the
+    target interval, or earlier if at least 90\% of parameter-specific
+    acceptance rates are already within range.
 \end{enumerate}
 
 Final acceptance rates after tuning are: $\alpha$: 0.40, $\bbeta$ (mean):
@@ -677,7 +797,7 @@ convergence.  For all parameters, we observe:
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.92\textwidth]{fig2_trace_plots.png}
+\includegraphics[width=\textwidth,height=0.78\textheight,keepaspectratio]{fig2_trace_plots.png}
 \caption{Trace plots (left) and autocorrelation functions (right) for
 selected parameters.  The four chains are overlaid in different colours.}
 \label{fig:trace}
@@ -813,7 +933,7 @@ the limited number of groups ($J = 19$).
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.55\textwidth]{fig_tau_posterior.png}
+\includegraphics[width=0.72\textwidth,height=0.42\textheight,keepaspectratio]{fig_tau_posterior.png}
 \caption{Posterior density of the between-specialty standard deviation
 $\tau$.  The distribution is concentrated well above zero, providing strong
 evidence for specialty-level heterogeneity.}
@@ -826,7 +946,7 @@ Physical Medicine and Rehabilitation (PMR) shows a markedly elevated random inte
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.75\textwidth]{fig4_specialty_random_effects.png}
+\includegraphics[width=\textwidth,height=0.7\textheight,keepaspectratio]{fig4_specialty_random_effects.png}
 \caption{Specialty random effects (posterior mean and 95\% CrI).  Red:
 interval entirely above zero; blue: entirely below zero; grey: includes zero.}
 \label{fig:forest}
@@ -923,7 +1043,7 @@ misspecification.
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.92\textwidth]{fig5_posterior_predictive.png}
+\includegraphics[width=\textwidth,height=0.68\textheight,keepaspectratio]{fig5_posterior_predictive.png}
 \caption{Posterior predictive checks.  (A) Overall readmission rate.
 (B) Standard deviation of specialty-level rates.  Dashed red lines show
 observed values.}
@@ -986,14 +1106,14 @@ across all four configurations, with posterior means ranging from 1.31 to
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.78\textwidth]{fig6_sensitivity_tau.png}
+\includegraphics[width=\textwidth,height=0.55\textheight,keepaspectratio]{fig6_sensitivity_tau.png}
 \caption{Posterior distribution of $\tau$ under four prior configurations.}
 \label{fig:sens-tau}
 \end{figure}
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.78\textwidth]{fig7_sensitivity_beta.png}
+\includegraphics[width=\textwidth,height=0.62\textheight,keepaspectratio]{fig7_sensitivity_beta.png}
 \caption{Posterior means and 95\% CrI for key fixed effects under four prior
 configurations.}
 \label{fig:sens-beta}
