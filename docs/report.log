@@ -449,39 +449,46 @@ File: umsb.fd 2013/01/14 v3.01 AMS symbols B
 ) [1
 
 ] [2] [3] [4] [5] [6]
-Overfull \hbox (7.87218pt too wide) in paragraph at lines 622--628
-\TU/lmr/m/n/10 The logistic likelihood prevents closed-form full conditionals, 
-ruling out standard Gibbs sampling. Full-dimensional
- []
-
-[7]
 File: ../output/figures//fig2_trace_plots.png Graphic file (type bmp)
 <../output/figures//fig2_trace_plots.png>
- [8]
-
-Package hyperref Warning: Token not allowed in a PDF string (Unicode):
-(hyperref)                removing `math shift' on input line 719.
 
 
 Package hyperref Warning: Token not allowed in a PDF string (Unicode):
-(hyperref)                removing `math shift' on input line 719.
+(hyperref)                removing `math shift' on input line 563.
 
-[9] [10]
+
+Package hyperref Warning: Token not allowed in a PDF string (Unicode):
+(hyperref)                removing `math shift' on input line 563.
+
+[7]
+Overfull \hbox (8.8164pt too wide) in paragraph at lines 600--607
+[]\TU/lmr/m/n/10 The lowest ESS values are observed for $\OML/cmm/m/it/10 ^^L[]
+$ \TU/lmr/m/n/10 (n_comorbid_groups_z, ESS $\OT1/cmr/m/n/10 = 251$\TU/lmr/m/n/1
+0 ) and $\OML/cmm/m/it/10 ^^L[]$ \TU/lmr/m/n/10 (comorbid_circulatory,
+ []
+
+[8]
 File: ../output/figures//fig_tau_posterior.png Graphic file (type bmp)
 <../output/figures//fig_tau_posterior.png>
 File: ../output/figures//fig4_specialty_random_effects.png Graphic file (type b
 mp)
 <../output/figures//fig4_specialty_random_effects.png>
- [11] [12]
+ [9] [10]
 File: ../output/figures//fig5_posterior_predictive.png Graphic file (type bmp)
 <../output/figures//fig5_posterior_predictive.png>
- [13]
+ [11]
+Overfull \hbox (11.42213pt too wide) in paragraph at lines 859--866
+[]\TU/lmr/m/n/10 Key fixed effects are numerically unchanged across all configu
+rations. For \TU/lmtt/m/n/10 comorbid_neoplasms\TU/lmr/m/n/10 , \TU/lmtt/m/n/10
+ A1C_measured\TU/lmr/m/n/10 ,
+ []
+
 File: ../output/figures//fig6_sensitivity_tau.png Graphic file (type bmp)
 <../output/figures//fig6_sensitivity_tau.png>
 File: ../output/figures//fig7_sensitivity_beta.png Graphic file (type bmp)
 <../output/figures//fig7_sensitivity_beta.png>
- [14] [15] [16] (report.aux)
+[12] [13] [14] (report.aux)
 Package rerunfilecheck Info: File `report.out' has not changed.
-(rerunfilecheck)             Checksum: 540AF9CFE94CE2543854901A81BCF83C;6636.
+(rerunfilecheck)             Checksum: 3143B5A68B46F04BDE14B15DFB666862;6092.
  )
-Output written on report.xdv (16 pages, 441208 bytes).
+Output written on report.xdv (14 pages, 386188 bytes).
