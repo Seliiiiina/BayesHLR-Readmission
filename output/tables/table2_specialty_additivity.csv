@@ -1,0 +1,4 @@
+Interaction tested,"LRT (chi2, df, p)",dAIC / dBIC,BIC verdict,% extra deviance
+specialty x age (standardised),"26.1, df=18, p=0.097",+9.9 / +163.7,additive preferred,2.95%
+specialty x comorbidity burden,"46.1, df=18, p=0.00028",-10.1 / +143.7,additive preferred,5.22%
+specialty x sex (female),"28.8, df=18, p=0.051",+5.2 / +150.5,additive preferred,3.25%
